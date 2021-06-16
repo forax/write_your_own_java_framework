@@ -13,6 +13,8 @@ final class Utils {
   public static Object invoke(Object bean, Method method, Object... args) {
     try {
       return method.invoke(bean, args);
+    } catch (IllegalArgumentException e) {
+      throw new AssertionError(e);
     } catch (IllegalAccessException e) {
       throw (IllegalAccessError) new IllegalAccessError().initCause(e);
     } catch (InvocationTargetException e) {
@@ -30,6 +32,8 @@ final class Utils {
   public static <T> T newInstance(Constructor<T> constructor) {
     try {
       return constructor.newInstance();
+    } catch (IllegalArgumentException e) {
+      throw new AssertionError(e);
     } catch (InstantiationException e) {
       throw (InstantiationError) new InstantiationError().initCause(e);
     } catch (IllegalAccessException e) {

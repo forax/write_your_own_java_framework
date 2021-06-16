@@ -32,6 +32,8 @@ final class Utils {
   static Object invokeConstructor(Constructor<?> constructor, Object[] args) {
     try {
       return constructor.newInstance(args);
+    } catch (IllegalArgumentException e) {
+      throw new AssertionError(e);
     } catch (InstantiationException e) {
       throw (InstantiationError) new InstantiationError().initCause(e);
     } catch (IllegalAccessException e) {
