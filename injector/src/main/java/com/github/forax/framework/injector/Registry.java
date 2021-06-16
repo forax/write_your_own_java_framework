@@ -1,10 +1,8 @@
 package com.github.forax.framework.injector;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.UndeclaredThrowableException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;

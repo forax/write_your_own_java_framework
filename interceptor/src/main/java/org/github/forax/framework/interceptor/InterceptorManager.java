@@ -11,7 +11,7 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.stream.Stream;
 
-public class InterceptorManager {
+public final class InterceptorManager {
   /*
   // package private
   static Object newSimpleProxy(Class<?> type) {

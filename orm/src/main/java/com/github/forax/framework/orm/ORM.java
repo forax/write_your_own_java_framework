@@ -2,7 +2,6 @@ package com.github.forax.framework.orm;
 
 import javax.sql.DataSource;
 import java.beans.BeanInfo;
-import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Constructor;
@@ -28,7 +27,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-public class ORM {
+public final class ORM {
   private ORM() {
     throw new AssertionError();
   }
@@ -199,14 +198,6 @@ public class ORM {
     return connection;
   }
 
-  private static BeanInfo findBeanInfo(Class<?> beanType) {
-    try {
-      return Introspector.getBeanInfo(beanType);
-    } catch (IntrospectionException e) {
-      throw new IllegalStateException(e);
-    }
-  }
-
   private static Constructor<?> findDefaultConstructor(Class<?> beanType) {
     try {
       return beanType.getConstructor();
@@ -225,7 +216,7 @@ public class ORM {
 
   public static <T, ID, R extends Repository<T, ID>> R createRepository(Class<? extends R> type) {
     var beanType = findBeanType(type);
-    var beanInfo = findBeanInfo(beanType);
+    var beanInfo = Utils.beanInfo(beanType);
     var idProperty = findId(beanType, beanInfo);
     var tableName = findTableName(beanType);
     var constructor = beanType.isInterface()? null: findDefaultConstructor(beanType);
@@ -268,7 +259,7 @@ public class ORM {
   private static final ClassValue<HashMap<Method, Behavior>> BEHAVIOR_CLASS_VALUE = new ClassValue<>() {
     @Override
     protected HashMap<Method, Behavior> computeValue(Class<?> beanType) {
-      var beanInfo = findBeanInfo(beanType);
+      var beanInfo = Utils.beanInfo(beanType);
       var map = new HashMap<Method, Behavior>();
       var properties = beanInfo.getPropertyDescriptors();
       for (int i = 0; i < properties.length; i++) {
@@ -338,7 +329,7 @@ public class ORM {
   );
 
   public static void createTable(Class<?> beanType) {
-    var beanInfo = findBeanInfo(beanType);
+    var beanInfo = Utils.beanInfo(beanType);
     var tableName = findTableName(beanType);
     var connection = currentConnection();
     var joiner = new StringJoiner(",\n", "(\n", "\n)");
