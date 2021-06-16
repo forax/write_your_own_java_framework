@@ -1,5 +1,5 @@
 # Write your own java framework
-Understand how Spring or JakartaEE works by rewriting a toy version of them
+Understand how Spring, JakartaEE, Jackson, Guice and Hibernate works by rewriting a toy version of them
 
 - Mapping objects to JSON
 - Dependency Injection
