@@ -4,6 +4,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.UndeclaredThrowableException;
+import java.util.function.Consumer;
 
 final class Utils {
   private Utils() {
@@ -39,14 +40,13 @@ final class Utils {
     } catch (IllegalAccessException e) {
       throw (IllegalAccessError) new IllegalAccessError().initCause(e);
     } catch (InvocationTargetException e) {
-      var cause = e.getCause();
-      if (cause instanceof RuntimeException runtimeException) {
-        throw runtimeException;
-      }
-      if (cause instanceof Error error) {
-        throw error;
-      }
-      throw new UndeclaredThrowableException(cause);
+      throw rethrow(e.getCause());
     }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static AssertionError rethrow(Throwable cause) {
+    ((Consumer<Throwable>)(Consumer<?>)(Consumer<RuntimeException>) t -> { throw t; }).accept(cause);
+    throw new AssertionError("never reached");
   }
 }

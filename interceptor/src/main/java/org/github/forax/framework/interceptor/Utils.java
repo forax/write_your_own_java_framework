@@ -8,10 +8,26 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.RandomAccess;
+import java.util.function.Consumer;
 
 final class Utils {
   private Utils() {
     throw new AssertionError();
+  }
+
+  static <T> List<T> reverseList(List<T> list) {
+    assert list instanceof RandomAccess;
+    return new AbstractList<>() {
+      @Override
+      public T get(int i) {
+        return list.get(list.size() - 1 - i);
+      }
+
+      @Override
+      public int size() {
+        return list.size();
+      }
+    };
   }
 
   private static final Map<String, Object> DEFAULT_VALUES = Map.of(
@@ -29,29 +45,13 @@ final class Utils {
     } catch (IllegalAccessException e) {
       throw (IllegalAccessError) new IllegalAccessError().initCause(e);
     } catch (InvocationTargetException e) {
-      var cause = e.getCause();
-      if (cause instanceof Exception exception) {
-        throw exception;
-      }
-      if (cause instanceof Error error) {
-        throw error;
-      }
-      throw new UndeclaredThrowableException(cause);
+      throw rethrow(e.getCause());
     }
   }
 
-  static <T> List<T> reverseList(List<T> list) {
-    assert list instanceof RandomAccess;
-    return new AbstractList<>() {
-      @Override
-      public T get(int i) {
-        return list.get(list.size() - 1 - i);
-      }
-
-      @Override
-      public int size() {
-        return list.size();
-      }
-    };
+  @SuppressWarnings("unchecked")
+  private static AssertionError rethrow(Throwable cause) {
+    ((Consumer<Throwable>)(Consumer<?>)(Consumer<RuntimeException>) t -> { throw t; }).accept(cause);
+    throw new AssertionError("never reached");
   }
 }
