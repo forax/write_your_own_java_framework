@@ -45,6 +45,16 @@ void method(Class<?> type) {
 }
 ```
 
+add## Default values
+
+```java
+private static final Map<String, Object> DEFAULT_VALUES = Map.of(
+      "Z", false, "B", (byte) 0, "C", '\0', "S", (short) 0, "I", 0, "J", 0L, "F", 0f, "D", 0.);
+
+Object defaultValue(Class<?> type) {
+  return DEFAULT_VALUES.get(type.descriptorString());
+}
+```
 
 ## Reflection
 
@@ -168,7 +178,7 @@ void method(Class<?> type) {
 
 ```java
 void method(Method method) {
-  MyAnnitation myAnnotation = method.getAnnotation(MyAnnitation.class);
+  MyAnnotation myAnnotation = method.getAnnotation(MyAnnitation.class);
   if (myAnnotation != null) {
     String value = myAnnotation.value();
     ...
