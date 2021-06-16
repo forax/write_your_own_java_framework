@@ -5,6 +5,8 @@
     <file url="file://$PROJECT_DIR$/injector/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/interceptor/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/interceptor/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mapper/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/mapper/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/orm/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/orm/src/main/resources" charset="UTF-8" />
   </component>

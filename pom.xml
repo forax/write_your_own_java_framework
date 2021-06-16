@@ -13,6 +13,7 @@
   </properties>
   
   <modules>
+    <module>mapper</module>
     <module>injector</module>
     <module>interceptor</module>
     <module>orm</module>

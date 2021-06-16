@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/injector/injector.iml" filepath="$PROJECT_DIR$/injector/injector.iml" />
       <module fileurl="file://$PROJECT_DIR$/interceptor/interceptor.iml" filepath="$PROJECT_DIR$/interceptor/interceptor.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mapper/mapper.iml" filepath="$PROJECT_DIR$/mapper/mapper.iml" />
       <module fileurl="file://$PROJECT_DIR$/orm/orm.iml" filepath="$PROJECT_DIR$/orm/orm.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/write_your_own_java_framework.iml" filepath="$PROJECT_DIR$/.idea/write_your_own_java_framework.iml" />
     </modules>

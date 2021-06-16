@@ -1,9 +1,8 @@
-package com.github.forax.framework.orm;
+package com.github.forax.framework.mapper;
 
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.UndeclaredThrowableException;
@@ -22,25 +21,11 @@ final class Utils {
     }
   }
 
-  public static Object invoke(Object bean, Method method, Object... args) {
+  public static Object invoke(Object bean, Method getter) {
     try {
-      return method.invoke(bean, args);
+      return getter.invoke(bean);
     } catch (IllegalArgumentException e) {
       throw new AssertionError(e);
-    } catch (IllegalAccessException e) {
-      throw (IllegalAccessError) new IllegalAccessError().initCause(e);
-    } catch (InvocationTargetException e) {
-      throw rethrow(e.getCause());
-    }
-  }
-
-  public static <T> T newInstance(Constructor<T> constructor) {
-    try {
-      return constructor.newInstance();
-    } catch (IllegalArgumentException e) {
-      throw new AssertionError(e);
-    } catch (InstantiationException e) {
-      throw (InstantiationError) new InstantiationError().initCause(e);
     } catch (IllegalAccessException e) {
       throw (IllegalAccessError) new IllegalAccessError().initCause(e);
     } catch (InvocationTargetException e) {

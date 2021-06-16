@@ -6,14 +6,16 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="injector" />
         <module name="interceptor" />
+        <module name="mapper" />
         <module name="orm" />
+        <module name="injector" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="injector" target="16" />
       <module name="interceptor" target="16" />
+      <module name="mapper" target="16" />
       <module name="orm" target="16" />
       <module name="write_your_own_java_framework" target="16" />
     </bytecodeTargetLevel>
