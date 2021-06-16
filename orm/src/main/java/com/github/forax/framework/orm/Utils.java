@@ -49,8 +49,7 @@ final class Utils {
   }
 
   @SuppressWarnings("unchecked")
-  private static AssertionError rethrow(Throwable cause) {
-    ((Consumer<Throwable>)(Consumer<?>)(Consumer<RuntimeException>) t -> { throw t; }).accept(cause);
-    throw new AssertionError("never reached");
+  private static <T extends Throwable> AssertionError rethrow(Throwable cause) throws T {
+    throw (T) cause;
   }
 }
