@@ -134,7 +134,8 @@ public final class Registry {
     @Override
     protected Constructor<?> computeValue(Class<?> type) {
       var constructors = Arrays.stream(type.getConstructors())
-          .filter(c -> c.isAnnotationPresent(Inject.class)).toList();
+          .filter(c -> c.isAnnotationPresent(Inject.class))
+          .toList();
       return switch (constructors.size()) {
         case 0 -> throw new IllegalStateException("zero public constructor annotated with @Inject");
         case 1 -> constructors.get(0);

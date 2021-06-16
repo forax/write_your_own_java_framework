@@ -3,8 +3,11 @@ package org.github.forax.framework.interceptor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.UndeclaredThrowableException;
+import java.util.AbstractList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.RandomAccess;
 
 final class Utils {
   private Utils() {
@@ -35,5 +38,20 @@ final class Utils {
       }
       throw new UndeclaredThrowableException(cause);
     }
+  }
+
+  static <T> List<T> reverseList(List<T> list) {
+    assert list instanceof RandomAccess;
+    return new AbstractList<>() {
+      @Override
+      public T get(int i) {
+        return list.get(list.size() - 1 - i);
+      }
+
+      @Override
+      public int size() {
+        return list.size();
+      }
+    };
   }
 }

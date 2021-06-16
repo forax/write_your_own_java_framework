@@ -3,7 +3,6 @@ package org.github.forax.framework.interceptor;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -65,24 +64,10 @@ public class InterceptorManager {
 
   // Q3
 
-  private static <T> List<T> reverse(List<T> list) {
-    return new AbstractList<>() {
-      @Override
-      public T get(int i) {
-        return list.get(list.size() - 1 - i);
-      }
-
-      @Override
-      public int size() {
-        return list.size();
-      }
-    };
-  }
-
   // package private
   Callable<?> getCallable(Stream<Interceptor> interceptors, Method method, Object proxy, Object[] args, Object delegate) {
     Callable<?> callable = () -> invokeDelegate(delegate, method, args);
-    for(var interceptor: reverse(interceptors.toList())) {
+    for(var interceptor: Utils.reverseList(interceptors.toList())) {
       var callable2 = callable;
       callable = () -> interceptor.intercept(method, proxy, args, callable2);
     }
@@ -133,7 +118,7 @@ public class InterceptorManager {
     //}
     //return fun;
 
-    return reverse(interceptors.toList()).stream()
+    return Utils.reverseList(interceptors.toList()).stream()
         .reduce((__, args, delegate) -> invokeDelegate(delegate, method, args),
             (fun, interceptor) -> (proxy, args, delegate) -> interceptor.intercept(method, proxy, args, () -> fun.apply(proxy, args, delegate)),
             (_1, _2) -> { throw null; });
