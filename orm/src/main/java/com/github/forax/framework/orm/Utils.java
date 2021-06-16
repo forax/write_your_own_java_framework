@@ -27,7 +27,7 @@ final class Utils {
     }
   }
 
-  public static <T> T newInstance(Constructor<T> constructor, Object... args) {
+  public static <T> T newInstance(Constructor<T> constructor) {
     try {
       return constructor.newInstance();
     } catch (InstantiationException e) {
