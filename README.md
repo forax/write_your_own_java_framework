@@ -4,5 +4,5 @@ Understand how Spring, JakartaEE, Jackson, Guice and Hibernate works by rewritin
 - Mapping objects to JSON
 - Dependency Injection
 - Interceptor and Aspect Oriented Programming
-- ORM (object Relational Mapping)
+- Object Relational Mapping (ORM)
 
