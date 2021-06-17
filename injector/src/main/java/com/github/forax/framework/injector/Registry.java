@@ -135,7 +135,7 @@ public final class Registry {
           .filter(c -> c.isAnnotationPresent(Inject.class))
           .toList();
       return switch (constructors.size()) {
-        case 0 -> throw new IllegalStateException("zero public constructor annotated with @Inject");
+        case 0 -> throw new IllegalStateException("no public constructor annotated with @Inject");
         case 1 -> constructors.get(0);
         default -> throw new IllegalStateException("more than one public constructor annotated with @Inject");
       };
