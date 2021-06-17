@@ -279,7 +279,7 @@ void method(Object o) {
 An annotation is a user defined modifier containing a `Map` of constants values that can be queried
 to retrieve those values associated with a class, a field, a method, etc.
 
-### Declaration and meta-annotation
+### Declaration and meta-annotations
 
 An annotation is declared with the keyword `@interface`.
 At runtime, an annotation is equivalent to an interface that provides a typesafe access to
@@ -319,6 +319,7 @@ returns `true` if the annotated element is annotated with the annotation taken a
 ```java
 void method(Class<?> type) {
   boolean isPresent = type.isAnnotationPresent(Marker.class);
+  ...
 }
 ```
 
