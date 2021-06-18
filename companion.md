@@ -1,23 +1,5 @@
 # Tip and Tricks used in the implementation
 
-## Null Object Design Pattern
-
-Sometimes you want to call a private method with a value saying there is no value but you can not use 'null'
-because it's a possible value. In that case, creating a special sentinel object does the job.
-
-```java
-private static final Object NULL_OBJECT = new Object();
-
-private void method(Object value) {
-  if (value == NULL_OBJECT) {
-    ...
-  }  
-}
-```
-
-See [Null Object Pattern](https://en.wikipedia.org/wiki/Null_object_pattern) for more information
-
-
 ## ThreadLocal
 
 In Java, variables are [lexically scoped](https://en.wikipedia.org/wiki/Scope_(computer_science)) but
