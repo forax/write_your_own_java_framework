@@ -5,10 +5,15 @@ import org.junit.jupiter.api.Test;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.MonthDay;
 import java.time.format.DateTimeFormatter;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@SuppressWarnings("unused")
 public class JSONMapperTest {
 
   @Test
@@ -28,7 +33,7 @@ public class JSONMapperTest {
   public void toJSONWithConfigure() {
     var mapper = new JSONMapper();
     mapper.configure(LocalDateTime.class, time -> time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-    assertEquals("2021-06-16T20:53:17", mapper.toJSON(LocalDateTime.of(2021, 06, 16, 20, 53, 17)));
+    assertEquals("2021-06-16T20:53:17", mapper.toJSON(LocalDateTime.of(2021, 6, 16, 20, 53, 17)));
   }
 
   @Test
@@ -123,7 +128,7 @@ public class JSONMapperTest {
     }
     var mapper = new JSONMapper();
     mapper.configure(LocalDateTime.class, time -> time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-    var startDate = new StartDate(LocalDateTime.of(2021, 7, 1, 20, 07));
+    var startDate = new StartDate(LocalDateTime.of(2021, 7, 1, 20, 7));
     var json = mapper.toJSON(startDate);
     assertEquals("""
       {"time": 2021-07-01T20:07:00}\
@@ -180,6 +185,36 @@ public class JSONMapperTest {
           """) ||
         json.equals("""
           {"last-name": "Hunky", "first-name": "Bob"}\
+          """)
+    );
+  }
+
+  @Test
+  public void toJSONFullExample() {
+    record Address(boolean international) {
+      public boolean isInternational() {
+        return international;
+      }
+    }
+    record Person(MonthDay birthday, Address address) {
+      @JSONProperty("birth-day")
+      public MonthDay getBirthday() {
+        return birthday;
+      }
+      public Address getAddress() {
+        return address;
+      }
+    }
+    var mapper = new JSONMapper();
+    mapper.configure(MonthDay.class, monthDay -> '"' + monthDay.toString() + '"');
+    var person = new Person(MonthDay.of(4, 17), new Address(false));
+    var json = mapper.toJSON(person);
+    assertTrue(
+        json.equals("""
+          {"address": {"international": false}, "birth-day": "--04-17"}\
+          """) ||
+        json.equals("""
+          {"birth-day": "--04-17", "address": {"international": false}}\
           """)
     );
   }
