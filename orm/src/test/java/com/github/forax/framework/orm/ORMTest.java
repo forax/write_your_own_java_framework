@@ -14,8 +14,10 @@ import java.util.stream.LongStream;
 import static com.github.forax.framework.orm.ORM.createRepository;
 import static com.github.forax.framework.orm.ORM.createTable;
 import static com.github.forax.framework.orm.ORM.transaction;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SuppressWarnings({"unused", "static-method"})
@@ -29,6 +31,17 @@ public class ORMTest {
       var connection = ORM.currentConnection();
       assertNotNull(connection);
     });
+  }
+
+  @Test
+  @SuppressWarnings("resource")
+  public void testTransactionNull() throws SQLException {
+    var dataSource = new JdbcDataSource();
+    dataSource.setURL("jdbc:h2:mem:test");
+    assertAll(
+        () -> assertThrows(NullPointerException.class, () -> transaction(dataSource, null)),
+        () -> assertThrows(NullPointerException.class, () -> transaction(null, () -> {}))
+    );
   }
 
   @Test
@@ -65,6 +78,21 @@ public class ORMTest {
       ), set);
     });
   }
+
+  @Test
+  public void testCreateTableNotInTransaction() {
+    var dataSource = new JdbcDataSource();
+    dataSource.setURL("jdbc:h2:mem:test");
+    assertThrows(IllegalStateException.class, () -> createTable(Person.class));
+  }
+
+  @Test
+  public void testCreateTableNull() {
+    var dataSource = new JdbcDataSource();
+    dataSource.setURL("jdbc:h2:mem:test");
+    assertThrows(NullPointerException.class, () -> createTable(null));
+  }
+
 
   static final class Person {
     private Long id;
@@ -108,6 +136,44 @@ public class ORMTest {
              ", name='" + name + '\'' +
              '}';
     }
+  }
+
+  @Test
+  public void testRepositoryNotInTransaction() {
+    interface VoidRepository extends Repository<Void, Long> { }
+    var dataSource = new JdbcDataSource();
+    dataSource.setURL("jdbc:h2:mem:test");
+    assertThrows(IllegalStateException.class, () -> createRepository(VoidRepository.class));
+  }
+
+  @Test
+  public void testRepositoryClassWithNoPrimaryKey() throws SQLException {
+    interface VoidRepository extends Repository<Void, Long> { }
+    var dataSource = new JdbcDataSource();
+    dataSource.setURL("jdbc:h2:mem:test");
+    transaction(dataSource, () -> assertThrows(IllegalStateException.class, () -> createRepository(VoidRepository.class)));
+  }
+
+  @Test
+  public void testRepositoryNull() {
+    var dataSource = new JdbcDataSource();
+    dataSource.setURL("jdbc:h2:mem:test");
+    assertThrows(NullPointerException.class, () -> createRepository(null));
+  }
+
+  @Test
+  public void testEqualsHashCodeToStringNotSupported() throws SQLException {
+    interface PersonRepository extends Repository<Person, Long> { }
+    var dataSource = new JdbcDataSource();
+    dataSource.setURL("jdbc:h2:mem:test");
+    transaction(dataSource, () -> {
+      var repository = createRepository(PersonRepository.class);
+      assertAll(
+          () -> assertThrows(UnsupportedOperationException.class, () -> repository.equals(null)),
+          () -> assertThrows(UnsupportedOperationException.class, () -> repository.hashCode()),
+          () -> assertThrows(UnsupportedOperationException.class, () -> repository.toString())
+      );
+    });
   }
 
   @Test
