@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "static-method"})
 public class JSONMapperTest {
 
   @Test
@@ -88,33 +88,30 @@ public class JSONMapperTest {
 
   @Test
   public void toJSONWithARecord() {
-    record Person(String name, int age) {
-      public String getName() {
-        return name;
-      }
-      public int getAge() {
-        return age;
-      }
-    }
+    record Person(String name, int age) { }
     var mapper = new JSONMapper();
     var person = new Person("Ana", 37);
     var json = mapper.toJSON(person);
-    System.out.println(json);
-    assertTrue(
-        json.equals("""
+    assertEquals("""
           {"name": "Ana", "age": 37}\
-          """) ||
-        json.equals("""
-          {"age": 37, "name": "Ana"}\
-          """)
-    );
+          """,
+          json);
   }
 
   @Test
-  public void toJSONWithNoGetter() {
-    record Empty(boolean empty) { }
+  public void toJSONEmptyClass() {
+    class Empty { }
     var mapper = new JSONMapper();
-    var empty = new Empty(true);
+    var empty = new Empty();
+    var json = mapper.toJSON(empty);
+    assertEquals("{}", json);
+  }
+
+  @Test
+  public void toJSONEmptyRecord() {
+    record Empty() { }
+    var mapper = new JSONMapper();
+    var empty = new Empty();
     var json = mapper.toJSON(empty);
     assertEquals("{}", json);
   }
@@ -137,85 +134,47 @@ public class JSONMapperTest {
 
   @Test
   public void toJSONRecursive() {
-    record Address(String street) {
-      public String getStreet() {
-        return street;
-      }
-    }
-    record Person(String name, Address address) {
-      public String getName() {
-        return name;
-      }
-      public Address getAddress() {
-        return Person.this.address;
-      }
-    }
+    record Address(String street) { }
+    record Person(String name, Address address) { }
     var mapper = new JSONMapper();
     var person = new Person("Bob", new Address("21 Jump Street"));
     var json = mapper.toJSON(person);
-    assertTrue(
-        json.equals("""
+    assertEquals("""
           {"name": "Bob", "address": {"street": "21 Jump Street"}}\
-          """) ||
-        json.equals("""
-          {"address": {"street": "21 Jump Street"}, "name": "Bob"}\
-          """)
-    );
+          """,
+          json);
   }
 
   @Test
   public void toJSONWithJSONProperty() {
-    record Person(String firstName, String lastName) {
-      @JSONProperty("first-name")
-      public String getFirstName() {
-        return firstName;
-      }
-
-      @JSONProperty("last-name")
-      public String getLastName() {
-        return lastName;
-      }
-    }
+    record Person(@JSONProperty("first-name") String firstName, @JSONProperty("last-name") String lastName) { }
     var mapper = new JSONMapper();
     var person = new Person("Bob", "Hunky");
     var json = mapper.toJSON(person);
-    assertTrue(
-        json.equals("""
+    assertEquals("""
           {"first-name": "Bob", "last-name": "Hunky"}\
-          """) ||
-        json.equals("""
-          {"last-name": "Hunky", "first-name": "Bob"}\
-          """)
-    );
+          """,
+          json);
   }
+
+  static class AddressInfo {
+    private boolean international;
+
+    public boolean isInternational() {
+      return international;
+    }
+  }
+  record PersonInfo(@JSONProperty("birth-day") MonthDay birthday, AddressInfo address) { }
 
   @Test
   public void toJSONFullExample() {
-    record Address(boolean international) {
-      public boolean isInternational() {
-        return international;
-      }
-    }
-    record Person(MonthDay birthday, Address address) {
-      @JSONProperty("birth-day")
-      public MonthDay getBirthday() {
-        return birthday;
-      }
-      public Address getAddress() {
-        return address;
-      }
-    }
     var mapper = new JSONMapper();
-    mapper.configure(MonthDay.class, monthDay -> '"' + monthDay.toString() + '"');
-    var person = new Person(MonthDay.of(4, 17), new Address(false));
+    mapper.configure(MonthDay.class, monthDay -> mapper.toJSON(monthDay.getMonth() + "-" + monthDay.getDayOfMonth()));
+    var person = new PersonInfo(MonthDay.of(4, 17), new AddressInfo());
     var json = mapper.toJSON(person);
-    assertTrue(
-        json.equals("""
-          {"address": {"international": false}, "birth-day": "--04-17"}\
-          """) ||
-        json.equals("""
-          {"birth-day": "--04-17", "address": {"international": false}}\
-          """)
-    );
+    assertEquals("""
+          {"birth-day": "APRIL-17", "address": {"international": false}}\
+          """,
+          json);
   }
 }

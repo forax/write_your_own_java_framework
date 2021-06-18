@@ -9,9 +9,10 @@ import java.lang.reflect.UndeclaredThrowableException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+
+@SuppressWarnings({"unused", "static-method"})
 public class UtilsTest {
-  @Test
-  @Tag("Q5")
+  @Test @Tag("Q5")
   public void invokeSetter() throws NoSuchMethodException {
     class A {
       private String color;

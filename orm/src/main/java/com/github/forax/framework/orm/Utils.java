@@ -6,8 +6,6 @@ import java.beans.Introspector;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.UndeclaredThrowableException;
-import java.util.function.Consumer;
 
 final class Utils {
   private Utils() {

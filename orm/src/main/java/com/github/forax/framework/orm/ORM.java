@@ -35,6 +35,8 @@ public final class ORM {
   private static final ThreadLocal<Connection> CONNECTION_THREAD_LOCAL = new ThreadLocal<>();
 
   private static class UncheckedSQLException extends RuntimeException {
+    private static final long serialVersionUID = 42L;
+
     private UncheckedSQLException(SQLException cause) {
       super(cause);
     }
@@ -137,6 +139,7 @@ public final class ORM {
     var sqlQuery = "MERGE INTO " + tableName + " " + columns + " VALUES " + values + ";";
 
     System.err.println(sqlQuery);
+    Object result = bean;
     try(var statement = connection.prepareStatement(sqlQuery, Statement.RETURN_GENERATED_KEYS)) {
       var index = 1;
       for(var property: properties) {
@@ -147,18 +150,19 @@ public final class ORM {
       }
       statement.executeUpdate();
       if (beanType.isInterface() && trackingInvocationHandler == null) {
-        bean = copyToEntityProxy(bean, beanType, beanInfo);
+        result = copyToEntityProxy(bean, beanType, beanInfo);
       }
-      var resultSet = statement.getGeneratedKeys();
-      if (resultSet.next()) {
-        var key = resultSet.getObject( 1);
-        Utils.invoke(bean, idProperty.getWriteMethod(), key);
+      try(var resultSet = statement.getGeneratedKeys()) {
+        if (resultSet.next()) {
+          var key = resultSet.getObject( 1);
+          Utils.invoke(result, idProperty.getWriteMethod(), key);
+        }
       }
     }
     if (trackingInvocationHandler != null) {
       trackingInvocationHandler.dirtySet.clear();
     }
-    return bean;
+    return result;
   }
 
   private static Class<?> findBeanType(Class<?> repositoryInterface) {
@@ -212,6 +216,7 @@ public final class ORM {
     return table.value().toUpperCase(Locale.ROOT);
   }
 
+  @SuppressWarnings("resource")
   public static <T, ID, R extends Repository<T, ID>> R createRepository(Class<? extends R> type) {
     var beanType = findBeanType(type);
     var beanInfo = Utils.beanInfo(beanType);

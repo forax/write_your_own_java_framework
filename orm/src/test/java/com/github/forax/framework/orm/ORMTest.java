@@ -18,9 +18,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "static-method"})
 public class ORMTest {
   @Test
+  @SuppressWarnings("resource")
   public void testCurrentConnection() throws SQLException {
     var dataSource = new JdbcDataSource();
     dataSource.setURL("jdbc:h2:mem:test");
@@ -31,6 +32,7 @@ public class ORMTest {
   }
 
   @Test
+  @SuppressWarnings("resource")
   public void testCreateTable() throws SQLException {
     record Column(String name, String typeName, int size, boolean isNullable, boolean isAutoIncrement) {}
     var dataSource = new JdbcDataSource();
@@ -109,6 +111,7 @@ public class ORMTest {
   }
 
   @Test
+  @SuppressWarnings("resource")
   public void testUserDefinedQuery() throws SQLException {
     var dataSource = new JdbcDataSource();
     dataSource.setURL("jdbc:h2:mem:test");
@@ -140,6 +143,7 @@ public class ORMTest {
   }
 
   @Test
+  @SuppressWarnings("resource")
   public void testFindAll() throws SQLException {
     var dataSource = new JdbcDataSource();
     dataSource.setURL("jdbc:h2:mem:test");
@@ -166,6 +170,7 @@ public class ORMTest {
   }
 
   @Test
+  @SuppressWarnings("resource")
   public void testFindById() throws SQLException {
     var dataSource = new JdbcDataSource();
     dataSource.setURL("jdbc:h2:mem:test");
@@ -192,6 +197,7 @@ public class ORMTest {
   }
 
   @Test
+  @SuppressWarnings("resource")
   public void testFindByIdNotFound() throws SQLException {
     var dataSource = new JdbcDataSource();
     dataSource.setURL("jdbc:h2:mem:test");
@@ -240,6 +246,7 @@ public class ORMTest {
   }
 
   @Test
+  @SuppressWarnings("resource")
   public void testFindByName() throws SQLException {
     var dataSource = new JdbcDataSource();
     dataSource.setURL("jdbc:h2:mem:test");
@@ -328,23 +335,29 @@ public class ORMTest {
       this.age = age;
     }
 
+    @Override
     @Id  // primary key
     @GeneratedValue  // auto_increment
     public Long getId() {
       return id;
     }
+    @Override
     public void setId(Long id) {
       this.id = id;
     }
+    @Override
     public String getName() {
       return name;
     }
+    @Override
     public void setName(String name) {
       this.name = name;
     }
+    @Override
     public int getAge() {
       return age;
     }
+    @Override
     public void setAge(int age) {
       this.age = age;
     }

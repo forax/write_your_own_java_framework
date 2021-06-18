@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-@SuppressWarnings({"unused", "AnonymousInnerClassMayBeStatic"})
+@SuppressWarnings({"unused", "static-method", "AnonymousInnerClassMayBeStatic"})
 public class RegistryTest {
   // Q1
 

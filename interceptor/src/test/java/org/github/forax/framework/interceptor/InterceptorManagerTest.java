@@ -130,11 +130,13 @@ public class InterceptorManagerTest {
         int bar();
       }
       record FooImpl() implements Foo {
+        @Override
         public int bar() {
           return 42;
         }
       }
       record FooProxy(Foo delegate) implements Foo {
+        @Override
         public int bar() {
           return delegate.bar();
         }
@@ -153,6 +155,7 @@ public class InterceptorManagerTest {
         int bar();
       }
       record FooImpl() implements Foo {
+        @Override
         public int bar() {
           return 101;
         }
@@ -188,6 +191,7 @@ public class InterceptorManagerTest {
         int bar(int multiplier);
       }
       record FooImpl() implements Foo {
+        @Override
         public int bar(int multiplier) {
           return 101;
         }
@@ -207,6 +211,7 @@ public class InterceptorManagerTest {
         int bar(int adder);
       }
       record FooImpl() implements Foo {
+        @Override
         public int bar(int adder) {
           return 51;
         }
@@ -225,6 +230,7 @@ public class InterceptorManagerTest {
         int bar();
       }
       record FooImpl() implements Foo {
+        @Override
         public int bar() {
           throw new RuntimeException("bar !");
         }
@@ -258,6 +264,7 @@ public class InterceptorManagerTest {
         String whizz(String s);
       }
       record FooImpl() implements Foo {
+        @Override
         public int bar() {
           return 45;
         }
@@ -306,6 +313,7 @@ public class InterceptorManagerTest {
         String bar(String s);
       }
       record FooImpl() implements Foo {
+        @Override
         public String bar(String s) {
           return s;
         }
@@ -342,11 +350,13 @@ public class InterceptorManagerTest {
         int bar();
       }
       record FooImpl() implements Foo {
+        @Override
         public int bar() {
           return 42;
         }
       }
       record FooProxy(Foo delegate) implements Foo {
+        @Override
         public int bar() {
           return delegate.bar();
         }
@@ -365,6 +375,7 @@ public class InterceptorManagerTest {
         int bar();
       }
       record FooImpl() implements Foo {
+        @Override
         public int bar() {
           return 101;
         }
@@ -400,6 +411,7 @@ public class InterceptorManagerTest {
         int bar(int multiplier);
       }
       record FooImpl() implements Foo {
+        @Override
         public int bar(int multiplier) {
           return 101;
         }
@@ -419,6 +431,7 @@ public class InterceptorManagerTest {
         int bar(int adder);
       }
       record FooImpl() implements Foo {
+        @Override
         public int bar(int adder) {
           return 51;
         }
@@ -437,6 +450,7 @@ public class InterceptorManagerTest {
         int bar();
       }
       record FooImpl() implements Foo {
+        @Override
         public int bar() {
           throw new RuntimeException("bar !");
         }
