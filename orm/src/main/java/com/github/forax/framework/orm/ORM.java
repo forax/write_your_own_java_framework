@@ -62,15 +62,13 @@ public final class ORM {
     }
   }
 
-  private static final Object NO_ARGUMENT = new Object();
-
-  private static List<Object> find(Connection connection, String sqlQuery, Class<?> beanType, Constructor<?> constructor, BeanInfo beanInfo, Object argument) throws SQLException {
+  private static List<Object> find(Connection connection, String sqlQuery, Class<?> beanType, Constructor<?> constructor, BeanInfo beanInfo, Object... args) throws SQLException {
     var isInterface = beanType.isInterface();
     var list = new ArrayList<>();
     try(var statement = connection.prepareStatement(sqlQuery)) {
       System.err.println(sqlQuery);
-      if (argument != NO_ARGUMENT) {
-        statement.setObject(1, argument);
+      for (var i = 0; i < args.length; i++) {
+        statement.setObject(i + 1, args[i]);
       }
       try(var resultSet = statement.executeQuery()) {
         while(resultSet.next()) {
@@ -226,10 +224,15 @@ public final class ORM {
       var name = method.getName();
       try {
         return switch(name) {
-          case "findAll" -> find(connection, "SELECT * FROM " + tableName, beanType, constructor, beanInfo, NO_ARGUMENT);
+          case "findAll" -> find(connection, "SELECT * FROM " + tableName, beanType, constructor, beanInfo);
           case "findById" -> find(connection, "SELECT * FROM " + tableName +" WHERE " + idProperty.getName() + " = ?" , beanType, constructor, beanInfo, args[0]).stream().findFirst();
           case "save" -> save(connection, tableName, beanType, beanInfo, idProperty, args[0]);
+          case "equals", "hashCode", "toString" -> throw new UnsupportedOperationException("" + method);
           default -> {
+            var query = method.getAnnotation(Query.class);
+            if (query != null) {
+              yield find(connection, query.value(), beanType, constructor, beanInfo, args[0]);
+            }
             if (name.startsWith("findBy")) {
               var propertyName = Introspector.decapitalize(name.substring(6));
               var property = findProperty(beanType, beanInfo, propertyName);

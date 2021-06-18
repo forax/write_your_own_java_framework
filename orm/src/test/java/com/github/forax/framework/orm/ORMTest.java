@@ -109,6 +109,37 @@ public class ORMTest {
   }
 
   @Test
+  public void testUserDefinedQuery() throws SQLException {
+    var dataSource = new JdbcDataSource();
+    dataSource.setURL("jdbc:h2:mem:test");
+    transaction(dataSource, () -> {
+      ORM.createTable(Person.class);
+      var connection = ORM.currentConnection();
+      var query = """
+          INSERT INTO PERSON (ID, NAME) VALUES (1, 'Bob');
+          INSERT INTO PERSON (ID, NAME) VALUES (2, 'Ana');
+          INSERT INTO PERSON (ID, NAME) VALUES (3, 'John');
+          INSERT INTO PERSON (ID, NAME) VALUES (4, 'Bob');
+          """;
+      try {
+        try(var statement = connection.createStatement()) {
+          statement.executeUpdate(query);
+        }
+      } catch(SQLException e) {
+        throw new AssertionError(e);
+      }
+
+      interface PersonRepository extends Repository<Person, Long> {
+        @Query("SELECT * FROM PERSON WHERE name = ?")
+        List<Person> findAllUsingAName(String name);
+      }
+      var repository = ORM.createRepository(PersonRepository.class);
+      var list = repository.findAllUsingAName("Bob");
+      assertEquals(List.of(1L, 4L), list.stream().map(Person::getId).toList());
+    });
+  }
+
+  @Test
   public void testFindAll() throws SQLException {
     var dataSource = new JdbcDataSource();
     dataSource.setURL("jdbc:h2:mem:test");
@@ -161,7 +192,7 @@ public class ORMTest {
   }
 
   @Test
-  public void testFindByIdBotFound() throws SQLException {
+  public void testFindByIdNotFound() throws SQLException {
     var dataSource = new JdbcDataSource();
     dataSource.setURL("jdbc:h2:mem:test");
     transaction(dataSource, () -> {
