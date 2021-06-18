@@ -4,6 +4,7 @@ import javax.sql.DataSource;
 import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
+import java.io.Serial;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -35,6 +36,7 @@ public final class ORM {
   private static final ThreadLocal<Connection> CONNECTION_THREAD_LOCAL = new ThreadLocal<>();
 
   private static class UncheckedSQLException extends RuntimeException {
+    @Serial
     private static final long serialVersionUID = 42L;
 
     private UncheckedSQLException(SQLException cause) {
