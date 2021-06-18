@@ -58,11 +58,17 @@ public final class ORM {
       try {
         runnable.run();
         connection.commit();
+      } catch(RuntimeException e) {
+        var cause = (e instanceof UncheckedSQLException unchecked)? unchecked.getCause(): e;
+        try {
+          connection.rollback();
+        } catch(SQLException suppressed) {
+          cause.addSuppressed(suppressed);
+        }
+        throw Utils.rethrow(cause);
       } finally{
         CONNECTION_THREAD_LOCAL.remove();
       }
-    } catch(UncheckedSQLException e) {
-      throw e.getCause();
     }
   }
 

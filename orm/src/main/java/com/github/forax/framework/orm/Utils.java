@@ -47,7 +47,7 @@ final class Utils {
   }
 
   @SuppressWarnings("unchecked")   // very wrong but works
-  private static <T extends Throwable> AssertionError rethrow(Throwable cause) throws T {
+  static <T extends Throwable> AssertionError rethrow(Throwable cause) throws T {
     throw (T) cause;
   }
 }
