@@ -191,6 +191,98 @@ if the declaring class is not a concrete class. Like with `IllegalAccessExceptio
 corresponding error `InstantiationError`.
 
 
+## Java Bean and BeanInfo
+
+Java Bean is a **convention** to interact at runtime with a class instance sees as container of
+properties.
+The class [Introspector](https://docs.oracle.com/en/java/javase/16/docs/api/java.desktop/java/beans/Introspector.html)
+returns a [BeanInfo](https://docs.oracle.com/en/java/javase/16/docs/api/java.desktop/java/beans/BeanInfo.html)
+describing the class taken as parameter as a Java Bean.
+
+A property is a virtual entity defined by the presence of a method that starts with `get` or `is`
+and/or a method that starts with `set`. By example, the code below defines a property `name`
+of type `String`.
+```java
+public class Person {
+  String getName() { ... }
+  void setName(String name) { ... }
+}
+```
+
+The method [beanInfo.getPropertyDescriptors()](https://docs.oracle.com/en/java/javase/16/docs/api/java.desktop/java/beans/BeanInfo.html#getPropertyDescriptors())
+returns the properties i.e. a [name](https://docs.oracle.com/en/java/javase/16/docs/api/java.desktop/java/beans/FeatureDescriptor.html#getName()),
+a [type](https://docs.oracle.com/en/java/javase/16/docs/api/java.desktop/java/beans/PropertyDescriptor.html#getPropertyType())
+and a [read method](https://docs.oracle.com/en/java/javase/16/docs/api/java.desktop/java/beans/PropertyDescriptor.html#getReadMethod())
+also called a getter and a [write method](https://docs.oracle.com/en/java/javase/16/docs/api/java.desktop/java/beans/PropertyDescriptor.html#getWriteMethod())
+also called a setter.
+
+```java
+void method(Class<?> type) {
+  BeanInfo beanInfo;
+  try {
+    beanInfo = Introspector.getBeanInfo(beanType);
+  } catch (IntrospectionException e) {
+    throw new IllegalStateException(e);
+  }
+  
+  PropertyDescriptor[] properties = beanInfo.getPropertyDescriptors();
+  for(PropertyDescriptor property: properties) {
+    String name = property.getName();
+    Class<?> type = property.getType();
+    Method getter = property.getReadMethod();
+    Method setter = property.getWriteMethod();
+    ...
+  }
+}
+```
+
+The method [Introspector.decapitalize()](https://docs.oracle.com/en/java/javase/16/docs/api/java.desktop/java/beans/Introspector.html#decapitalize(java.lang.String))
+provides the property name from a method name without its prefix `is`, `get` or `set`.
+
+```java
+void method(String methodName) 
+  if (methodName.length() > 3 && methodName.startsWith("get")) {
+    String propertyName = Introspector.decapitalize(methodName.substring(3));
+    ...
+  }
+}
+```
+
+
+## Record
+
+A record is a named tuple composed of [components](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/reflect/RecordComponent.html)
+that can be queried at runtime.
+
+```java
+public record Person(String name, int age) {}
+```
+
+The method [Class.isRecord()](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/Class.html#isRecord())
+returns `true` is a class is a record.
+The method [Class.getRecordComponents()](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/Class.html#getRecordComponents())
+returns an array of the record components or `null`.
+A record component is kind a like a Bean property, it is defined by
+- [a name](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/reflect/RecordComponent.html#getName())
+- [a type](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/reflect/RecordComponent.html#getType())
+- [an accessor](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/reflect/RecordComponent.html#getAccessor()) (a getter, records are not mutable)
+
+```java
+void method(Class<?> type) {
+  if (!type.isRecord()) {
+    ...  
+  }
+  RecordComponent[] components = type.getRecordComponents();
+  for(RecordComponent component: components) {
+    String name = component.getName();
+    Class<?> type = component.getType();
+    Method accessor = component.getAccessor();
+    ...
+  }
+}
+```
+
+
 ## Dynamic Proxy
 
 A _dynamic_ proxy is a class generated at runtime that implement a list of interfaces, this is
@@ -259,7 +351,7 @@ void method(Object o) {
 ## Annotation
 
 An annotation is a user defined modifier containing a `Map` of constants values that can be queried
-to retrieve those values associated with a class, a field, a method, etc.
+to retrieve those values associated with a class, a field, a method, a record component, etc.
 
 ### Declaration and meta-annotations
 
@@ -361,63 +453,6 @@ void method(Class<?> type) {
       case TypeVariable<?> typeVariable -> ...       // e.g T
       case WildcardType wildcardType -> ...          // e.g ? extends String
     } 
-  }
-}
-```
-
-## Java Bean and BeanInfo
-
-Java Bean is a **convention** to interact at runtime with a class instance sees as container of
-properties.
-The class [Introspector](https://docs.oracle.com/en/java/javase/16/docs/api/java.desktop/java/beans/Introspector.html)
-returns a [BeanInfo](https://docs.oracle.com/en/java/javase/16/docs/api/java.desktop/java/beans/BeanInfo.html)
-describing the class taken as parameter as a Java Bean.
-
-A property is a virtual entity defined by the presence of a method that starts with `get` or `is`
-and/or a method that starts with `set`. By example, the code below defines a property `name`
-of type `String`.
-```java
-public class Person {
-  String getName() { ... }
-  void setName(String name) { ... }
-}
-```
-
-The method [beanInfo.getPropertyDescriptors()](https://docs.oracle.com/en/java/javase/16/docs/api/java.desktop/java/beans/BeanInfo.html#getPropertyDescriptors())
-returns the property i.e. a [name](https://docs.oracle.com/en/java/javase/16/docs/api/java.desktop/java/beans/FeatureDescriptor.html#getName()),
-a [type](https://docs.oracle.com/en/java/javase/16/docs/api/java.desktop/java/beans/PropertyDescriptor.html#getPropertyType())
-and a [read method](https://docs.oracle.com/en/java/javase/16/docs/api/java.desktop/java/beans/PropertyDescriptor.html#getReadMethod())
-also called a getter and a [write method](https://docs.oracle.com/en/java/javase/16/docs/api/java.desktop/java/beans/PropertyDescriptor.html#getWriteMethod())
-also called a setter.
-
-```java
-void method(Class<?> type) {
-  BeanInfo beanInfo;
-  try {
-    beanInfo = Introspector.getBeanInfo(beanType);
-  } catch (IntrospectionException e) {
-    throw new IllegalStateException(e);
-  }
-  
-  PropertyDescriptor[] properties = beanInfo.getPropertyDescriptors();
-  for(PropertyDescriptor property: properties) {
-    String name = property.getName();
-    Class<?> type = property.getType();
-    Method getter = property.getReadMethod();
-    Method setter = property.getWriteMethod();
-    ...
-  }
-}
-```
-
-The method [Introspector.decapitalize()](https://docs.oracle.com/en/java/javase/16/docs/api/java.desktop/java/beans/Introspector.html#decapitalize(java.lang.String))
-provides the property name from a method name without its prefix `is`, `get` or `set`.
-
-```java
-void method(String methodName) 
-  if (methodName.length() > 3 && methodName.startsWith("get")) {
-    String propertyName = Introspector.decapitalize(methodName.substring(3));
-    ...
   }
 }
 ```
