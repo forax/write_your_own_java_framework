@@ -251,7 +251,7 @@ void method(String methodName)
 
 ## Record
 
-A record is a named tuple composed of [components](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/reflect/RecordComponent.html)
+A record is a named tuple composed of ordered [components](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/reflect/RecordComponent.html)
 that can be queried at runtime.
 
 ```java
