@@ -231,7 +231,7 @@ public final class ORM {
           default -> {
             var query = method.getAnnotation(Query.class);
             if (query != null) {
-              yield find(connection, query.value(), beanType, constructor, beanInfo, args[0]);
+              yield find(connection, query.value(), beanType, constructor, beanInfo, args);
             }
             if (name.startsWith("findBy")) {
               var propertyName = Introspector.decapitalize(name.substring(6));

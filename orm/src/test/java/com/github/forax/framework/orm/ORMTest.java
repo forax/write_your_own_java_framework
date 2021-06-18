@@ -370,6 +370,33 @@ public class ORMTest {
   }
 
   @Test
+  public void testQuerySeveralParameters() throws SQLException {
+    interface UserRepository extends Repository<User, Long> {
+      @Query("SELECT * FROM USER WHERE name = ? AND age >= ?")
+      List<User> findAllWithANameGreaterThanAge(String name, int age);
+    }
+
+    var dataSource = new JdbcDataSource();
+    dataSource.setURL("jdbc:h2:mem:test");
+
+    var repository = createRepository(UserRepository.class);
+    transaction(dataSource, () -> {
+      createTable(User.class);
+
+      repository.save(new User("Bob", 24));
+      repository.save(new User("Ana", 26));
+      repository.save(new User("Bob", 34));
+      repository.save(new User("Bob", 63));
+
+      var list = repository.findAllWithANameGreaterThanAge("Bob", 30);
+      assertEquals(List.of(
+          new User(3L, "Bob", 34),
+          new User(4L, "Bob", 63)
+      ), list);
+    });
+  }
+
+  @Test
   public void testCreateRepository() throws SQLException {
     interface UserRepository extends Repository<User, Long> {
       Optional<User> findByName(String name);
