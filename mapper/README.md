@@ -7,8 +7,7 @@ The `JSONMapper` is able to convert
 - can be configured to handle specific type like `MonthDay` of `java.time`
 - recursive types, types composed of other types, likes Java Beans or records 
 
-Here is an example of a `Person` defined as a record, with the `Address` defined as a bean,
-abd the mapper configured to use a user defined format for instance of the class `MonthDay`.
+Here is an example of a `Person` defined as a record, with the `Address` defined as a bean.
 
 ```java
 class Address {
@@ -19,7 +18,12 @@ class Address {
   }
 }
 record Person(@JSONProperty("birth-day") MonthDay birthday, Address address) { }
+```
 
+We can create a `Mapper`, configure it to use a user defined format for instance of the class `MonthDay`
+and calls `toJSON()` to get the corresponding JSON text.
+
+```java
 var mapper = new JSONMapper();
 mapper.configure(MonthDay.class,
     monthDay -> mapper.toJSON(monthDay.getMonth() + "-" + monthDay.getDayOfMonth()));
