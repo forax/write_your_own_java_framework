@@ -35,13 +35,11 @@ try(Connection connection = dataSource.getConnection()) {
 }
 ```
 
-
 ### Transaction
 
 [Connection.setAutoCommit](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Connection.html#setAutoCommit(boolean))
 [commit]([https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Connection.html#commit())
 [rollback](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Connection.html#rollback())
-
 
 ```java
 try(Connection connection = dataSource.getConnection()) {
@@ -54,6 +52,16 @@ try(Connection connection = dataSource.getConnection()) {
   }
 }
 ```
+
+
+### Transaction semantics
+
+[TRANSACTION_READ_COMMITTED](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Connection.html#TRANSACTION_READ_COMMITTED)
+see modification from other transactions
+
+[TRANSACTION_REPEATABLE_READ](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Connection.html#TRANSACTION_REPEATABLE_READ)
+don't see modification from other transactions
+
 
 
 ## Statement and PreparedStatement
