@@ -53,7 +53,7 @@ public final class JSONMapper {
 
   private final HashMap<Class<?>, Generator> map = new HashMap<>();
 
-  public <T> void configure(Class<T> type, Function<? super T, String> generator) {
+  public <T> void configure(Class<? extends T> type, Function<? super T, String> generator) {
     Objects.requireNonNull(type);
     Objects.requireNonNull(generator);
     var result= map.putIfAbsent(type, (mapper, bean) -> generator.apply(type.cast(bean)));
@@ -63,7 +63,7 @@ public final class JSONMapper {
   }
 
   public String toJSON(Object o) {
-    // TODO use a switch when moving to Java 17
+    // TODO use a switch on types when moving to Java 17
     if (o == null) {
       return "null";
     }
