@@ -49,16 +49,22 @@ public final class ORM {
     }
   }
 
-  public static void transaction(DataSource dataSource, Runnable runnable) throws SQLException {
+  @FunctionalInterface
+  public interface TransactionBlock {
+    void run() throws SQLException;
+  }
+
+  public static void transaction(DataSource dataSource, TransactionBlock block) throws SQLException {
     Objects.requireNonNull(dataSource);
-    Objects.requireNonNull(runnable);
+    Objects.requireNonNull(block);
     try(var connection = dataSource.getConnection()) {
+      System.out.println("found " + connection);
       connection.setAutoCommit(false);
       CONNECTION_THREAD_LOCAL.set(connection);
       try {
-        runnable.run();
+        block.run();
         connection.commit();
-      } catch(RuntimeException e) {
+      } catch(RuntimeException | SQLException e) {
         var cause = (e instanceof UncheckedSQLException unchecked)? unchecked.getCause(): e;
         try {
           connection.rollback();

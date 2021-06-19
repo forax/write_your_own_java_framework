@@ -3,7 +3,10 @@ package com.github.forax.framework.orm;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -35,7 +38,107 @@ public class ORMTest {
 
   @Test
   @SuppressWarnings("resource")
-  public void testTransactionNull() throws SQLException {
+  public void testCommitConnection() throws SQLException, IOException {
+    var path = Files.createTempFile("", ".h2db");
+    try {
+      var dataSource = new JdbcDataSource();
+      dataSource.setURL("jdbc:h2:" + path);
+      transaction(dataSource, () -> {
+        var connection = ORM.currentConnection();
+        var query = """
+          CREATE TABLE FOO (
+            ID BIGINT,
+            NAME VARCHAR(255),
+            PRIMARY KEY (ID)
+          );
+          INSERT INTO FOO (ID, NAME) VALUES (1, 'bar');
+          INSERT INTO FOO (ID, NAME) VALUES (2, 'baz');
+          """;
+
+        try(var statement = connection.createStatement()) {
+          statement.executeUpdate(query);
+        }
+        // commit
+      });
+      transaction(dataSource, () -> {
+        var connection2 = ORM.currentConnection();
+        var query2 = """
+          SELECT * FROM FOO;
+          """;
+        record Foo(Long id, String name) {}
+        var list = new ArrayList<>();
+        try(var statement = connection2.createStatement()) {
+          var resultSet = statement.executeQuery(query2);
+          while(resultSet.next()) {
+            var id = (Long) resultSet.getObject(1);
+            var name = (String) resultSet.getObject(2);
+            list.add(new Foo(id, name));
+          }
+        }
+        assertEquals(List.of(new Foo(1L, "bar"), new Foo(2L, "baz")), list);
+      });
+    } finally {
+      Files.delete(path);
+    }
+  }
+
+  @Test
+  @SuppressWarnings("resource")
+  public void testRollbackConnection() throws SQLException, IOException {
+    var path = Files.createTempFile("", ".h2db");
+    try {
+      var dataSource = new JdbcDataSource();
+      dataSource.setURL("jdbc:h2:" + path);
+
+      transaction(dataSource, () -> {
+        var connection = ORM.currentConnection();
+        var query = """
+          CREATE TABLE FOO (
+            ID BIGINT,
+            NAME VARCHAR(255),
+            PRIMARY KEY (ID)
+          );
+          """;
+        try(var statement = connection.createStatement()) {
+          statement.executeUpdate(query);
+        }
+        // commit
+      });
+      assertThrows(RuntimeException.class, () -> {
+        transaction(dataSource, () -> {
+          var connection = ORM.currentConnection();
+          var query = """
+          INSERT INTO FOO (ID, NAME) VALUES (1, 'bar');
+          INSERT INTO FOO (ID, NAME) VALUES (2, 'baz');
+          """;
+          try(var statement = connection.createStatement()) {
+            statement.executeUpdate(query);
+          }
+          throw new RuntimeException("rollback");
+        });
+      });
+      transaction(dataSource, () -> {
+        var connection2 = ORM.currentConnection();
+        var query2 = """
+          SELECT * FROM FOO;
+          """;
+        var list = new ArrayList<Long>();
+        try(var statement = connection2.createStatement()) {
+          var resultSet = statement.executeQuery(query2);
+          while (resultSet.next()) {
+            list.add((Long) resultSet.getObject(1));
+          }
+        }
+        assertEquals(List.of(), list);
+      });
+    } finally {
+      Files.delete(path);
+    }
+  }
+
+  @Test
+  @SuppressWarnings("resource")
+  public void testTransactionNull() {
     var dataSource = new JdbcDataSource();
     dataSource.setURL("jdbc:h2:mem:test");
     assertAll(
@@ -54,22 +157,18 @@ public class ORMTest {
       ORM.createTable(User.class);
       var set = new HashSet<Column>();
       var connection = ORM.currentConnection();
-      try {
-        var metaData = connection.getMetaData();
-        try(var resultSet = metaData.getColumns(null, null, "USER", null)) {
-          while(resultSet.next()) {
-            var column = new Column(
-                resultSet.getString(4),                 // COLUMN_NAME
-                resultSet.getString(6),                 // TYPE_NAME
-                resultSet.getInt(7),                    // COLUMN_SIZE
-                resultSet.getString(18).equals("YES"),  // IS_NULLABLE
-                resultSet.getString(23).equals("YES")   // IS_AUTOINCREMENT
-            );
-            set.add(column);
-          }
+      var metaData = connection.getMetaData();
+      try(var resultSet = metaData.getColumns(null, null, "USER", null)) {
+        while(resultSet.next()) {
+          var column = new Column(
+              resultSet.getString(4),                 // COLUMN_NAME
+              resultSet.getString(6),                 // TYPE_NAME
+              resultSet.getInt(7),                    // COLUMN_SIZE
+              resultSet.getString(18).equals("YES"),  // IS_NULLABLE
+              resultSet.getString(23).equals("YES")   // IS_AUTOINCREMENT
+          );
+          set.add(column);
         }
-      } catch(SQLException e) {
-        throw new AssertionError(e);
       }
       assertEquals(Set.of(
           new Column("ID", "BIGINT", 19, false, true),
@@ -170,8 +269,8 @@ public class ORMTest {
       var repository = createRepository(PersonRepository.class);
       assertAll(
           () -> assertThrows(UnsupportedOperationException.class, () -> repository.equals(null)),
-          () -> assertThrows(UnsupportedOperationException.class, () -> repository.hashCode()),
-          () -> assertThrows(UnsupportedOperationException.class, () -> repository.toString())
+          () -> assertThrows(UnsupportedOperationException.class, repository::hashCode),
+          () -> assertThrows(UnsupportedOperationException.class, repository::toString)
       );
     });
   }
@@ -190,14 +289,9 @@ public class ORMTest {
           INSERT INTO PERSON (ID, NAME) VALUES (3, 'John');
           INSERT INTO PERSON (ID, NAME) VALUES (4, 'Bob');
           """;
-      try {
-        try(var statement = connection.createStatement()) {
-          statement.executeUpdate(query);
-        }
-      } catch(SQLException e) {
-        throw new AssertionError(e);
+      try(var statement = connection.createStatement()) {
+        statement.executeUpdate(query);
       }
-
       interface PersonRepository extends Repository<Person, Long> {
         @Query("SELECT * FROM PERSON WHERE name = ?")
         List<Person> findAllUsingAName(String name);
@@ -220,14 +314,9 @@ public class ORMTest {
           INSERT INTO PERSON (ID, NAME) VALUES (1, 'iga');
           INSERT INTO PERSON (ID, NAME) VALUES (2, 'biva');
           """;
-      try {
-        try(var statement = connection.createStatement()) {
-          statement.executeUpdate(query);
-        }
-      } catch(SQLException e) {
-        throw new AssertionError(e);
+      try(var statement = connection.createStatement()) {
+        statement.executeUpdate(query);
       }
-
       interface PersonRepository extends Repository<Person, Long> {}
       var repository = ORM.createRepository(PersonRepository.class);
       var persons = repository.findAll();
@@ -247,14 +336,9 @@ public class ORMTest {
           INSERT INTO PERSON (ID, NAME) VALUES (1, 'iga');
           INSERT INTO PERSON (ID, NAME) VALUES (2, 'biva');
           """;
-      try {
-        try(var statement = connection.createStatement()) {
-          statement.executeUpdate(query);
-        }
-      } catch(SQLException e) {
-        throw new AssertionError(e);
+      try(var statement = connection.createStatement()) {
+        statement.executeUpdate(query);
       }
-
       interface PersonRepository extends Repository<Person, Long> {}
       var repository = ORM.createRepository(PersonRepository.class);
       var person = repository.findById(2L).orElseThrow();
@@ -274,14 +358,9 @@ public class ORMTest {
           INSERT INTO PERSON (ID, NAME) VALUES (1, 'iga');
           INSERT INTO PERSON (ID, NAME) VALUES (2, 'biva');
           """;
-      try {
-        try(var statement = connection.createStatement()) {
-          statement.executeUpdate(query);
-        }
-      } catch(SQLException e) {
-        throw new AssertionError(e);
+      try(var statement = connection.createStatement()) {
+        statement.executeUpdate(query);
       }
-
       interface PersonRepository extends Repository<Person, Long> {}
       var repository = ORM.createRepository(PersonRepository.class);
       var person = repository.findById(888L);
@@ -323,14 +402,9 @@ public class ORMTest {
           INSERT INTO PERSON (ID, NAME) VALUES (1, 'iga');
           INSERT INTO PERSON (ID, NAME) VALUES (2, 'biva');
           """;
-      try {
-        try(var statement = connection.createStatement()) {
-          statement.executeUpdate(query);
-        }
-      } catch(SQLException e) {
-        throw new AssertionError(e);
+      try(var statement = connection.createStatement()) {
+        statement.executeUpdate(query);
       }
-
       interface PersonRepository extends Repository<Person, Long> {
         Optional<Person> findByName(String name);
       }
