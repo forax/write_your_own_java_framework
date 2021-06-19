@@ -1,4 +1,4 @@
-# Tip and Tricks used in the implementation
+# Tips and Tricks used in the implementation
 
 ## ThreadLocal
 
@@ -8,12 +8,12 @@ The class [ThreadLocal](https://docs.oracle.com/en/java/javase/16/docs/api/java.
 represents thread local variables.
 
 It can be seen as a `Map<Thread, Object>` which has a
-different values for each thread. `threadLocal.set()` set the value for the current thread,
+different values for each thread. `threadLocal.set(value)` set the value for the current thread,
 `threadLocal.get()` returns the value for the current thread and `threadLocal.remove()`
 removes the value associated with the current thread.
 
-In order to avoid memory leaks, here an object not being garbage
-collected because it is still stored in a thread local variable, we scope the variable to the stack
+In order to avoid memory leaks, i.e. an object not being garbage
+collected because it is still stored in a thread local variable, we "scope" the variable to the stack
 so the thread local variable value is removed when the execution of the method ends. 
 
 ```java
@@ -78,7 +78,7 @@ Object defaultValue(Class<?> type) {
 }
 ```
 
-Here, we don't store `null` for void or any object classes because `Map.get()` returns `null`
+We don't store `null` for void or any object classes because `Map.get()` returns `null`
 if there is no corresponding key.
 
 
@@ -425,12 +425,12 @@ void method(Constructor<?> constructor) {
 ## Java Compiler generics attributes
 
 Parametrized types, named generics in Java, are verified at compile time but disappear at runtime.
-But in order to allow separate compilation, a library and an application using that library to be
-compiled independently, the compiler insert the generics declaration into the classfile.
+In order to allow separate compilation ; a library, and an application compiled independently ;
+the compiler insert a special attribute into the classfile.
 
-These information can be retrieved using the methods following the pattern `getGeneric*()`
+These attributes can be retrieved at runtime using the methods following the pattern `getGeneric*()`
 on the class, method, field, etc.
-By example, the method [Class.getGenericInterfaces()](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/Class.html#getGenericInterfaces())
+For example, the method [Class.getGenericInterfaces()](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/Class.html#getGenericInterfaces())
 returns the interfaces of a class as an array of [Type](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/reflect/Type.html).
 
 A `Type` can be
