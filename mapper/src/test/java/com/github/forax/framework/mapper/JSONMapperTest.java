@@ -33,32 +33,6 @@ public class JSONMapperTest {
     }
   }
 
-  @Nested
-  class Q2 {
-    @Test
-    public void toJSONWithConfigure() {
-      var mapper = new JSONMapper();
-      mapper.configure(LocalDateTime.class, time -> time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-      assertEquals("2021-06-16T20:53:17", mapper.toJSON(LocalDateTime.of(2021, 6, 16, 20, 53, 17)));
-    }
-
-    @Test
-    public void configureTwice() {
-      var mapper = new JSONMapper();
-      mapper.configure(LocalTime.class, __ -> "foo");
-      assertThrows(IllegalStateException.class, () -> mapper.configure(LocalTime.class, __ -> "bar"));
-    }
-
-    @Test
-    public void configurePreconditions() {
-      var mapper = new JSONMapper();
-      assertAll(
-          () -> assertThrows(NullPointerException.class, () -> mapper.configure(null, String::toString)),
-          () -> assertThrows(NullPointerException.class, () -> mapper.configure(Timestamp.class, null))
-      );
-    }
-  }
-
   public static class Alien {
     private final String name;
     private final String planet;
@@ -90,7 +64,7 @@ public class JSONMapperTest {
   }
 
   @Nested
-  class Q3 {
+  class Q2 {
     @Test
     public void toJSONWithAClass() {
       var mapper = new JSONMapper();
@@ -104,17 +78,6 @@ public class JSONMapperTest {
           {"planet": "Proxima Centauri", "name": "Elvis"}\
           """)
       );
-    }
-
-    @Test
-    public void toJSONBeanWithConfigure() {
-      var mapper = new JSONMapper();
-      mapper.configure(LocalDateTime.class, time -> time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-      var startDate = new StartDate(LocalDateTime.of(2021, 7, 1, 20, 7));
-      var json = mapper.toJSON(startDate);
-      assertEquals("""
-      {"time": 2021-07-01T20:07:00}\
-      """, json);
     }
 
     @Test
@@ -144,6 +107,43 @@ public class JSONMapperTest {
     @JSONProperty("last-name")
     public String getLastName() {
       return lastName;
+    }
+  }
+
+  @Nested
+  class Q4 {
+    @Test
+    public void toJSONWithConfigure() {
+      var mapper = new JSONMapper();
+      mapper.configure(LocalDateTime.class, time -> time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+      assertEquals("2021-06-16T20:53:17", mapper.toJSON(LocalDateTime.of(2021, 6, 16, 20, 53, 17)));
+    }
+
+    @Test
+    public void toJSONBeanWithConfigure() {
+      var mapper = new JSONMapper();
+      mapper.configure(LocalDateTime.class, time -> time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+      var startDate = new StartDate(LocalDateTime.of(2021, 7, 1, 20, 7));
+      var json = mapper.toJSON(startDate);
+      assertEquals("""
+      {"time": 2021-07-01T20:07:00}\
+      """, json);
+    }
+
+    @Test
+    public void configureTwice() {
+      var mapper = new JSONMapper();
+      mapper.configure(LocalTime.class, __ -> "foo");
+      assertThrows(IllegalStateException.class, () -> mapper.configure(LocalTime.class, __ -> "bar"));
+    }
+
+    @Test
+    public void configurePreconditions() {
+      var mapper = new JSONMapper();
+      assertAll(
+          () -> assertThrows(NullPointerException.class, () -> mapper.configure(null, String::toString)),
+          () -> assertThrows(NullPointerException.class, () -> mapper.configure(Timestamp.class, null))
+      );
     }
   }
 
