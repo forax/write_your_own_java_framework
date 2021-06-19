@@ -32,7 +32,7 @@ var person = new Person(MonthDay.of(4, 17), new Address());
 var json = mapper.toJSON(person);  // {"birth-day": "APRIL-17", "address": {"international": false}}
 ```
 
-The unit tests are here [JSONMapperTest.java](src/test/java/com/github/forax/framework/mapper/JSONMapperTest.java)
+The unit tests are in [JSONMapperTest.java](src/test/java/com/github/forax/framework/mapper/JSONMapperTest.java)
 
 1. Create the class `Mapper` and adds the method `toJSON()` that works only with
    JSON primitive values, `null`, `true`, `false`, any integers or doubles and strings.
@@ -69,7 +69,7 @@ The unit tests are here [JSONMapperTest.java](src/test/java/com/github/forax/fra
    All the tests from the previous questions should still pass.
 
 5. JSON keys can use any identifier not only the ones that are valid in Java.
-   To support that, add a check if the getter is annotated with the annotation @JSONProperty
+   To support that, add a check if the getter is annotated with the annotation `@JSONProperty`
    and in that case, use the name provided by the annotation.
    Then check that the tests in the nested class "Q5" all pass
 
