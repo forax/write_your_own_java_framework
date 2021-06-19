@@ -58,7 +58,6 @@ public final class ORM {
     Objects.requireNonNull(dataSource);
     Objects.requireNonNull(block);
     try(var connection = dataSource.getConnection()) {
-      System.out.println("found " + connection);
       connection.setAutoCommit(false);
       CONNECTION_THREAD_LOCAL.set(connection);
       try {
