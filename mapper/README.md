@@ -20,7 +20,7 @@ class Address {
 record Person(@JSONProperty("birth-day") MonthDay birthday, Address address) { }
 ```
 
-We can create a `Mapper`, configure it to use a user defined format for instance of the class `MonthDay`
+We can create a `Mapper`, configure it to use a user defined format for instances of the class `MonthDay`
 and calls `toJSON()` to get the corresponding JSON text.
 
 ```java
@@ -32,21 +32,32 @@ var person = new Person(MonthDay.of(4, 17), new Address());
 var json = mapper.toJSON(person);  // {"birth-day": "APRIL-17", "address": {"international": false}}
 ```
 
+The unit tests are here [JSONMapperTest.java](src/test/java/com/github/forax/framework/mapper/JSONMapperTest.java)
 
-
-1. Create the class `Mapper` and adds the method `toJSON()` that works with
+1. Create the class `Mapper` and adds the method `toJSON()` that works only with
    JSON primitive values, `null`, `true`, `false`, any integers or doubles and strings.
+   Then check that the tests in the nested class "Q1" all pass.
 
 2. Adds a method `configure()` that takes a `Class` and a lambda that takes an instance of that class
    and returns a string and modify `toJSON()` to work with instances of the configured classes.
    Internally, a HashMap that associates a class to the lambda can be used to rapidly find
-   the corresponding lambda from an instance of the class
+   the corresponding lambda from an instance of the class.
+   Then check that the tests in the nested class "Q2" all pass.
+   
+   Note: the lambda takes a value and returns a value thus it can be type by a java.util.function.Function.
+         The type of the class and the type of the first parameter of the lambda are the same,
+         you need to introduce a type parameter for that. Exactly the type of the first parameter of the
+         lambda is a super type of the type of the class.
 
-3. Adds the support of Java Beans by modifying `toJSON()` to get the `BeanInfo`, get the properties
-   from it and use a stream with a `collect(Collectors.joining())` to add the '{' and '}' and
-   separate the values by a comma.
+3. Adds the support of Java Beans by modifying `toJSON()` to get the `BeanInfo`.
+   Get the properties  from it and use a stream with a `collect(Collectors.joining())`
+   to add the '{' and '}' and  separate the values by a comma.
+   Then check that the tests in the nested class "Q3" all pass
 
-4. Modify the code of `toJSON()` to compute the `BeanInfo` and the properties once per class.
+   Note: the method `Utils.beanInfo()` already provides a way to get the `BeanInfo` of a class.
+         the method `Utils.invoke()` can be used to call a `Method`.
+
+4. Modify the code of `toJSON()` to compute the `BeanInfo` and the properties only once per class.
    For that, you will use a private functional interface
    ```java
    private interface Generator {
@@ -55,9 +66,16 @@ var json = mapper.toJSON(person);  // {"birth-day": "APRIL-17", "address": {"int
    ```
    to represent the computation to do to generate a string representation
    of a class and a `ClassValue<Generator>` as a cache.
+   All the tests from the previous questions should still pass.
 
-5. Modify the code to support not only Java beans but also records by writing
-   two private methods  that takes a Class and properties of the beans or of the records.
+5. JSON keys can use any identifier not only the ones that are valid in Java.
+   To support that, add a check if the getter is annotated with the annotation @JSONProperty
+   and in that case, use the name provided by the annotation.
+   Then check that the tests in the nested class "Q5" all pass
+
+6. Modify the code to support not only Java beans but also records by refactoring
+   your code to have two private methods  that takes a Class and returns either the properties of the bean
+   or the properties of the records.
    ```java
    private static Stream<PropertyDescriptor> beanProperties(Class<?> type) {
      // TODO
@@ -67,4 +85,5 @@ var json = mapper.toJSON(person);  // {"birth-day": "APRIL-17", "address": {"int
      // TODO
    }
    ```
-   Then change the code so `toJSON()` works with both records and beans. 
+   Change the code so `toJSON()` works with both records and beans.
+   Then check that the tests in the nested class "Q1" all pass
