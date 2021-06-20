@@ -11,6 +11,10 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.joining;
 
 public final class JSONMapper {
+  private interface Generator {
+    String generate(JSONMapper mapper, Object object);
+  }
+
   private static final ClassValue<Generator> GENERATOR_CLASS_VALUE = new ClassValue<>() {
     @Override
     protected Generator computeValue(Class<?> type) {
@@ -18,13 +22,14 @@ public final class JSONMapper {
       var generators = properties
           .<Generator>map(property -> {
             var getter = property.getReadMethod();
-            var jsonProperty = getter.getAnnotation(JSONProperty.class);
-            var name = jsonProperty == null? property.getName(): jsonProperty.value();
-            return (mapper, bean) -> "\"" + name + "\": " + mapper.toJSON(Utils.invoke(bean, getter));
+            var propertyAnnotation = getter.getAnnotation(JSONProperty.class);
+            var propertyName = propertyAnnotation == null? property.getName(): propertyAnnotation.value();
+            var key = "\"" + propertyName + "\": ";
+            return (mapper, o) -> key + mapper.toJSON(Utils.invoke(o, getter));
           })
           .toList();
-      return (mapper, bean) -> generators.stream()
-          .map(generator -> generator.generate(mapper, bean))
+      return (mapper, object) -> generators.stream()
+          .map(generator -> generator.generate(mapper, object))
           .collect(joining(", ", "{", "}"));
     }
   };
@@ -46,19 +51,14 @@ public final class JSONMapper {
         });
   }
 
-
-  private interface Generator {
-    String generate(JSONMapper mapper, Object bean);
-  }
-
   private final HashMap<Class<?>, Generator> map = new HashMap<>();
 
-  public <T> void configure(Class<? extends T> type, Function<? super T, String> generator) {
+  public <T> void configure(Class<? extends T> type, Function<? super T, String> function) {
     Objects.requireNonNull(type);
-    Objects.requireNonNull(generator);
-    var result= map.putIfAbsent(type, (mapper, bean) -> generator.apply(type.cast(bean)));
+    Objects.requireNonNull(function);
+    var result = map.putIfAbsent(type, (mapper, object) -> function.apply(type.cast(object)));
     if (result != null) {
-      throw new IllegalStateException("a generator is already registered for the type " + type.getName());
+      throw new IllegalStateException("already a function registered for type " + type.getName());
     }
   }
 

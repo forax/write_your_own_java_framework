@@ -33,6 +33,18 @@ public class JSONMapperTest {
     }
   }
 
+  public static class Car {
+    private final String owner;
+
+    public Car(String owner) {
+      this.owner = owner;
+    }
+
+    public String getOwner() {
+      return owner;
+    }
+  }
+
   public static class Alien {
     private final String name;
     private final String planet;
@@ -51,32 +63,32 @@ public class JSONMapperTest {
     }
   }
 
-  public static class StartDate {
-    private final LocalDateTime time;
-
-    public StartDate(LocalDateTime time) {
-      this.time = time;
-    }
-
-    public LocalDateTime getTime() {
-      return time;
-    }
-  }
-
   @Nested
   class Q2 {
+    @Test
+    public void toJSONWithASimpleClass() {
+      var mapper = new JSONMapper();
+      var car = new Car("Marty");
+      var json = mapper.toJSON(car);
+      assertEquals("""
+          {"owner": "Marty"}\
+          """, json);
+    }
+
     @Test
     public void toJSONWithAClass() {
       var mapper = new JSONMapper();
       var alien = new Alien("Elvis", "Proxima Centauri");
       var json = mapper.toJSON(alien);
-      assertTrue(
-          json.equals("""
+      var expected1 = """
           {"name": "Elvis", "planet": "Proxima Centauri"}\
-          """) ||
-          json.equals("""
+          """;
+      var expected2 = """
           {"planet": "Proxima Centauri", "name": "Elvis"}\
-          """)
+          """;
+      assertTrue(
+          json.equals(expected1) || json.equals(expected2),
+          "error: " + json + "\n expects either " + expected1 + " or " + expected2
       );
     }
 
@@ -110,8 +122,21 @@ public class JSONMapperTest {
     }
   }
 
+  public static class StartDate {
+    private final LocalDateTime time;
+
+    public StartDate(LocalDateTime time) {
+      this.time = time;
+    }
+
+    public LocalDateTime getTime() {
+      return time;
+    }
+  }
+
+
   @Nested
-  class Q4 {
+  class Q5 {
     @Test
     public void toJSONWithConfigure() {
       var mapper = new JSONMapper();
@@ -148,7 +173,7 @@ public class JSONMapperTest {
   }
 
   @Nested
-  class Q5 {
+  class Q6 {
     @Test
     public void toJSONWithJSONProperty() {
       var mapper = new JSONMapper();
@@ -172,7 +197,7 @@ public class JSONMapperTest {
   public record PersonInfo(@JSONProperty("birth-day") MonthDay birthday, AddressInfo address) { }
 
   @Nested
-  class Q6 {
+  class Q7 {
     @Test
     public void toJSONWithARecord() {
       record Person(String name, int age) { }
