@@ -20,7 +20,7 @@ class Address {
 record Person(@JSONProperty("birth-day") MonthDay birthday, Address address) { }
 ```
 
-We can create a `Mapper`, configure it to use a user defined format for instances of the class `MonthDay`
+We can create a `JSONMapper`, configure it to use a user defined format for instances of the class `MonthDay`
 and calls `toJSON()` to get the corresponding JSON text.
 
 ```java
@@ -34,7 +34,7 @@ var json = mapper.toJSON(person);  // {"birth-day": "APRIL-17", "address": {"int
 
 The unit tests are in [JSONMapperTest.java](src/test/java/com/github/forax/framework/mapper/JSONMapperTest.java)
 
-1. Create the class `Mapper` and adds the method `toJSON()` that works only with
+1. Create the class `JSONMapper` and adds the method `toJSON()` that works only with
    JSON primitive values, `null`, `true`, `false`, any integers or doubles and strings.
    Then check that the tests in the nested class "Q1" all pass.
 
@@ -44,23 +44,30 @@ The unit tests are in [JSONMapperTest.java](src/test/java/com/github/forax/frame
    Then check that the tests in the nested class "Q2" all pass.
 
    Note: the method `Utils.beanInfo()` already provides a way to get the `BeanInfo` of a class.
-         the method `Utils.invoke()` can be used to call a `Method`.
+         the method `Utils.invoke()` deals with the exception correctly when calling a `Method`.
 
-3. We want to modify the code of `toJSON()` to compute the `BeanInfo` and the properties only once per class.
-   We can observe that from the Mapper POV, there are two kinds of type,
+3. The problem with the current solution is that the `BeanInfo` and the properties are computed each times
+   even if the properties of a class are always the same.
+   The idea is to declare a `ClassValue<PropertyDescriptor[]>` that caches an array of properties for a class.
+   So modify the method `toJSON()` to use a `ClassValue<PropertyDescriptor[]>`.
+   All the tests from the previous questions should still pass.
+
+4. We can cache more values, by example the property name and the getter are always the same for a pair of key/value.
+   We can observe that from the JSONMapper POV, there are two kinds of type,
    - either it's a primitive those only need the object to generate the JSON text
    - or it's a bean type, those need the object, and the mapper to recursively call `mapp.toJSON()` on the properties
-   Thus to represent the computation to do we can declare the private functional interface `Generator`
+   Thus to represent the computation to do we can declare a private functional interface `Generator` that takes
+   a `JSONMapper` and an `Object` as parameter.
    ```java
    private interface Generator {
      String generate(JSONMapper mapper, Object bean);
    }
    ```
-   Now all we need to implement `toJSON()` is to get the `Generator` from the class and calls its method `generate`,
-   for that we will use a `ClassValue<Generator>` as a cache.
+   Change your code to use `ClassValue<Gneerator>` instead of a `ClassValue<PropertyDescriptor[]>,
+   and modify the implementation of the method `toJSON()` accordingly.
    All the tests from the previous questions should still pass.
 
-4. Adds a method `configure()` that takes a `Class` and a lambda that takes an instance of that class
+5. Adds a method `configure()` that takes a `Class` and a lambda that takes an instance of that class
    and returns a string and modify `toJSON()` to work with instances of the configured classes.
    Internally, a HashMap that associates a class to the computation of the JSON text using the lambda.
    Then check that the tests in the nested class "Q4" all pass.
@@ -70,7 +77,7 @@ The unit tests are in [JSONMapperTest.java](src/test/java/com/github/forax/frame
    you need to introduce a type parameter for that. Exactly the type of the first parameter of the
    lambda is a super type of the type of the class.
 
-5. JSON keys can use any identifier not only the ones that are valid in Java.
+6. JSON keys can use any identifier not only the ones that are valid in Java.
    For that, we introduce an annotation `@JSONProperty` defined like this
    ```java
    @Retention(RUNTIME)
@@ -83,7 +90,7 @@ The unit tests are in [JSONMapperTest.java](src/test/java/com/github/forax/frame
    and in that case, use the name provided by the annotation instead of the name of the property.
    Then check that the tests in the nested class "Q5" all pass
 
-6. Modify the code to support not only Java beans but also records by refactoring
+7. Modify the code to support not only Java beans but also records by refactoring
    your code to have two private methods  that takes a Class and returns either the properties of the bean
    or the properties of the records.
    ```java
