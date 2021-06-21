@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SuppressWarnings({"unused", "static-method"})
 public class UtilsTest {
-  @Test @Tag("Q5")
+  @Test
   public void invokeSetter() throws NoSuchMethodException {
     class A {
       private String color;
@@ -27,7 +27,7 @@ public class UtilsTest {
     Utils.invokeSetter(method, a, "green");
     assertEquals("green", a.color);
   }
-  @Test @Tag("Q5")
+  @Test
   public void invokeSetterBadArgument() throws NoSuchMethodException {
     class A {
       public void setInteger(Integer value) {
@@ -39,7 +39,7 @@ public class UtilsTest {
     var a = new A();
     assertThrows(AssertionError.class, () -> Utils.invokeSetter(method, a, "notAnInteger"));
   }
-  @Test @Tag("Q5")
+  @Test
   public void invokeSetterThrowUncheckedException() throws NoSuchMethodException {
     interface Foo { }
     class A {
@@ -51,7 +51,7 @@ public class UtilsTest {
     var method = A.class.getMethod("setFoo", Foo.class);
     assertThrows(IllegalArgumentException.class, () -> Utils.invokeSetter(method, new A(), new Foo() {}));
   }
-  @Test @Tag("Q5")
+  @Test
   public void invokeSetterCheckedException() throws NoSuchMethodException {
     class A {
       public void setString(String s) throws IOException {
@@ -62,7 +62,7 @@ public class UtilsTest {
     var method = A.class.getMethod("setString", String.class);
     assertThrows(UndeclaredThrowableException.class, () -> Utils.invokeSetter(method, new A(), "hello"));
   }
-  @Test @Tag("Q5")
+  @Test
   public void invokeSetterCheckedError() throws NoSuchMethodException {
     class A {
       public void setString(String s){
@@ -75,7 +75,7 @@ public class UtilsTest {
   }
 
 
-  @Test @Tag("Q7")
+  @Test
   public void invokeConstructor() throws NoSuchMethodException {
     record A() {
       @Inject
@@ -85,7 +85,7 @@ public class UtilsTest {
     Object object = Utils.invokeConstructor(A.class.getConstructor(), new Object[0]);
     assertTrue(object instanceof A);
   }
-  @Test @Tag("Q7")
+  @Test
   public void invokeConstructorWithArguments() throws NoSuchMethodException {
     record A(String s, int i) {
       public A {

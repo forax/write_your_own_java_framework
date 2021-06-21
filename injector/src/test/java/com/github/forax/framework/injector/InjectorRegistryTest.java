@@ -23,12 +23,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @SuppressWarnings("unused")
-public class RegistryTest {
+public class InjectorRegistryTest {
   @Nested
   class Q1 {
     @Test @Tag("Q1")
     public void getRegistry() {
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       assertNotNull(registry);
     }
 
@@ -44,14 +44,14 @@ public class RegistryTest {
 
     @Test @Tag("Q2")
     public void registerInstanceAndGetInstanceString() {
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       registry.registerInstance(String.class, "hello");
       assertEquals("hello", registry.getInstance(String.class));
     }
 
     @Test @Tag("Q2")
     public void registerInstanceAndGetInstanceInteger() {
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       registry.registerInstance(Integer.class, 42);
       assertEquals(42, registry.getInstance(Integer.class));
     }
@@ -60,7 +60,7 @@ public class RegistryTest {
     public void registerInstanceAndGetInstanceSameInstance() {
       record Person(String name) {}
 
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       var bob = new Person("Bob");
       registry.registerInstance(Person.class, bob);
       assertSame(bob, registry.getInstance(Person.class));
@@ -78,7 +78,7 @@ public class RegistryTest {
         }
       }
 
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       var impl = new Impl();
       registry.registerInstance(I.class, impl);
       assertSame(impl, registry.getInstance(I.class));
@@ -86,7 +86,7 @@ public class RegistryTest {
 
     @Test @Tag("Q2")
     public void registerInstancePreconditions() {
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       assertAll(
           () -> assertThrows(NullPointerException.class, () -> registry.registerInstance(null, new Object())),
           () -> assertThrows(NullPointerException.class, () -> registry.registerInstance(Consumer.class, null))
@@ -99,7 +99,7 @@ public class RegistryTest {
   class Q3 {
     @Test @Tag("Q3")
     public void registerInstanceAndGetInstancePreciseSignature() {
-      Registry registry = new Registry();
+      InjectorRegistry registry = new InjectorRegistry();
       registry.registerInstance(String.class, "hello");
       String instance = registry.getInstance(String.class);
       assertEquals("hello", instance);
@@ -118,7 +118,7 @@ public class RegistryTest {
     public void registerProvider() {
       record Bar() {}
 
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       registry.registerProvider(Bar.class, Bar::new);
       var instance1 = registry.getInstance(Bar.class);
       var instance2 = registry.getInstance(Bar.class);
@@ -138,7 +138,7 @@ public class RegistryTest {
         }
       }
 
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       registry.registerProvider(I.class, Impl::new);
       var instance1 = registry.getInstance(I.class);
       var instance2 = registry.getInstance(I.class);
@@ -148,7 +148,7 @@ public class RegistryTest {
 
     @Test @Tag("Q4")
     public void registerProviderPreconditions() {
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       assertAll(
           () -> assertThrows(NullPointerException.class, () -> registry.registerProvider(null, Object::new)),
           () -> assertThrows(NullPointerException.class, () -> registry.registerInstance(Consumer.class, null))
@@ -165,7 +165,7 @@ public class RegistryTest {
         @Inject
         public void setValue(String value) {}
       }
-      List<Method> setters = Registry.findSetters(A.class);
+      List<Method> setters = InjectorRegistry.findSetters(A.class);
       assertAll(
           () -> assertEquals(1, setters.size()),
           () -> assertEquals(A.class.getMethod("setValue", String.class), setters.get(0))
@@ -178,7 +178,7 @@ public class RegistryTest {
         // No @Inject
         public void setValue(String value) {}
       }
-      var setters = Registry.findSetters(A.class);
+      var setters = InjectorRegistry.findSetters(A.class);
       assertEquals(List.of(), setters);
     }
 
@@ -188,7 +188,7 @@ public class RegistryTest {
         @Inject
         private void setValue(String value) {}
       }
-      var setters = Registry.findSetters(A.class);
+      var setters = InjectorRegistry.findSetters(A.class);
       assertEquals(List.of(), setters);
     }
 
@@ -198,7 +198,7 @@ public class RegistryTest {
         @Inject
         void setValue(String value);
       }
-      var setters = Registry.findSetters(I.class);
+      var setters = InjectorRegistry.findSetters(I.class);
       assertAll(
           () -> assertEquals(1, setters.size()),
           () -> assertEquals(I.class.getMethod("setValue", String.class), setters.get(0))
@@ -211,7 +211,7 @@ public class RegistryTest {
         @Inject
         default void setValue(Integer value) {}
       }
-      var setters = Registry.findSetters(I.class);
+      var setters = InjectorRegistry.findSetters(I.class);
       assertAll(
           () -> assertEquals(1, setters.size()),
           () -> assertEquals(I.class.getMethod("setValue", Integer.class), setters.get(0))
@@ -226,7 +226,7 @@ public class RegistryTest {
         @Inject
         public void setValue2(Double value) {}
       }
-      var setters = Registry.findSetters(A.class);
+      var setters = InjectorRegistry.findSetters(A.class);
       var methods = Set.of(
           A.class.getMethod("setValue1", Double.class),
           A.class.getMethod("setValue2", Double.class)
@@ -258,7 +258,7 @@ public class RegistryTest {
         }
       }
 
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       registry.registerProvider(A.class, A::new);
       registry.registerInstance(String.class, "hello");
       registry.registerInstance(Integer.class, 42);
@@ -286,7 +286,7 @@ public class RegistryTest {
       }
 
       var counter = new Object() { int count; };
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       registry.registerProvider(A.class, A::new);
       registry.registerProvider(Integer.class, () -> counter.count++);
       var a = registry.getInstance(A.class);
@@ -303,7 +303,7 @@ public class RegistryTest {
       }
 
       var counter = new Object() { int count; };
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       registry.registerInstance(A.class, new A() {});
       registry.registerInstance(String.class, "hello");
       var a = registry.getInstance(A.class);
@@ -322,7 +322,7 @@ public class RegistryTest {
         ThreadLocal<Boolean> FLAG = ThreadLocal.withInitial(() -> false);
       }
 
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       registry.registerInstance(A.class, new A() {});
       registry.registerInstance(String.class, "hello");
       var a = registry.getInstance(A.class);
@@ -340,7 +340,7 @@ public class RegistryTest {
         public A {}
       }
 
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       registry.registerProviderClass(A.class, A.class);
       A a = registry.getInstance(A.class);
       assertNotNull(a);
@@ -354,7 +354,7 @@ public class RegistryTest {
       }
 
       var counter = new Object() { int count; };
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       registry.registerProviderClass(A.class, A.class);
       registry.registerProvider(Integer.class, () -> counter.count++);
       A a = registry.getInstance(A.class);
@@ -371,7 +371,7 @@ public class RegistryTest {
         public A() {}
       }
 
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       assertThrows(IllegalStateException.class, () -> registry.registerProviderClass(A.class, A.class));
     }
 
@@ -385,13 +385,43 @@ public class RegistryTest {
         public A(Boolean b) {}
       }
 
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       assertThrows(IllegalStateException.class, () -> registry.registerProviderClass(A.class, A.class));
+    }
+
+    record Point(int x, int y) {}
+    static class Circle {
+      private final Point center;
+      private String name;
+
+      @Inject
+      public Circle(Point center) {
+        this.center = center;
+      }
+
+      @Inject
+      public void setName(String name) {
+        this.name = name;
+      }
+    }
+
+    @Test @Tag("Q7")
+    public void exampleWithAll() {
+      var registry = new InjectorRegistry();
+      registry.registerInstance(Point.class, new Point(0, 0));
+      registry.registerProvider(String.class, () -> "hello");
+      registry.registerProviderClass(Circle.class, Circle.class);
+
+      var circle = registry.getInstance(Circle.class);
+      assertAll(
+          () -> assertEquals(new Point(0, 0), circle.center),
+          () -> assertEquals("hello", circle.name)
+      );
     }
 
     @Test @Tag("Q7")
     public void registerProviderClassPreconditions() {
-      var registry = new Registry();
+      var registry = new InjectorRegistry();
       assertAll(
           () -> assertThrows(NullPointerException.class, () -> registry.registerProviderClass(null, Object.class)),
           () -> assertThrows(NullPointerException.class, () -> registry.registerProviderClass(Consumer.class, null))

@@ -9,12 +9,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-public final class Registry {
+public final class InjectorRegistry {
   // Q1
 
   //private final HashMap<Class<?>, Object> map = new HashMap<>();
 
-  public Registry() { }
+  public InjectorRegistry() { }
 
   /*
   // Q2
