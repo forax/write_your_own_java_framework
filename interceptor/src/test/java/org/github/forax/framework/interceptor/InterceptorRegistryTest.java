@@ -411,7 +411,7 @@ public class InterceptorRegistryTest {
     @interface Example2 {}
 
     @Test @Tag("Q4")
-    public void proxiesSharingTheSmeInterface() {
+    public void proxiesSharingTheSameInterface() {
       interface Foo {
         @Example1 @Example2
         String hello(String message);
