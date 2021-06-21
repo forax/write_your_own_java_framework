@@ -1,5 +1,8 @@
 package com.github.forax.framework.injector;
 
+import java.beans.BeanInfo;
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -8,6 +11,14 @@ import java.lang.reflect.UndeclaredThrowableException;
 final class Utils {
   private Utils() {
     throw new AssertionError();
+  }
+
+  public static BeanInfo beanInfo(Class<?> beanType) {
+    try {
+      return Introspector.getBeanInfo(beanType);
+    } catch (IntrospectionException e) {
+      throw new IllegalStateException(e);
+    }
   }
 
   static void invokeSetter(Method setter, Object instance, Object value) {

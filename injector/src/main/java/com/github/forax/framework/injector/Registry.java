@@ -1,8 +1,8 @@
 package com.github.forax.framework.injector;
 
+import java.beans.PropertyDescriptor;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -23,14 +23,14 @@ public final class Registry {
     Objects.requireNonNull(instance);
     var result = map.putIfAbsent(type, instance);
     if (result != null) {
-      throw new IllegalStateException("instance for " + type.getName() + " already registered");
+      throw new IllegalStateException("instance of " + type.getName() + " already registered");
     }
   }
 
   public Object getInstance(Class<?> type) {
     var instance = map.get(type);
     if (instance == null) {
-      throw new IllegalStateException("no instanceof for " + type.getName());
+      throw new IllegalStateException("no instance of " + type.getName());
     }
     return instance;
   }*/
@@ -43,14 +43,14 @@ public final class Registry {
     Objects.requireNonNull(instance);
     var result = map.putIfAbsent(type, instance);
     if (result != null) {
-      throw new IllegalStateException("instance for " + type.getName() + " already registered");
+      throw new IllegalStateException("instance of " + type.getName() + " already registered");
     }
   }
 
   public <T> T getInstance(Class<T> type) {
     var instance = map.get(type);
     if (instance == null) {
-      throw new IllegalStateException("no instanceof for " + type.getName());
+      throw new IllegalStateException("no instance of " + type.getName());
     }
     return type.cast(instance);
   }
@@ -70,7 +70,7 @@ public final class Registry {
     Objects.requireNonNull(provider);
     var result = map.putIfAbsent(type, provider);
     if (result != null) {
-      throw new IllegalStateException("provider for " + type.getName() + " already registered");
+      throw new IllegalStateException("provider of " + type.getName() + " already registered");
     }
   }
 
@@ -78,7 +78,7 @@ public final class Registry {
   public <T> T getInstance(Class<T> type) {
     var provider = map.get(type);
     if (provider == null) {
-      throw new IllegalStateException("no provider for " + type.getName());
+      throw new IllegalStateException("no provider of " + type.getName());
     }
     return type.cast(provider.get());
   }*/
@@ -87,11 +87,11 @@ public final class Registry {
   // package private for test
   /*
   static List<Method> findSetters(Class<?> type) {
-    return Arrays.stream(type.getMethods())
-        .filter(m -> m.isAnnotationPresent(Inject.class))
-        .filter(m -> m.getName().startsWith("set"))
-        .filter(m -> m.getParameterCount() == 1 && m.getReturnType() == void.class)
-        .toList();
+    var beanInfo = Utils.beanInfo(type);
+    return Arrays.stream(beanInfo.getPropertyDescriptors())
+       .map(PropertyDescriptor::getWriteMethod)
+       .filter(setter -> setter != null && setter.isAnnotationPresent(Inject.class))
+       .toList();
   }*/
 
   // package private for test
@@ -99,7 +99,7 @@ public final class Registry {
   public <T> T getInstance(Class<T> type) {
     var provider = map.get(type);
     if (provider == null) {
-      throw new IllegalStateException("no provider for " + type.getName());
+      throw new IllegalStateException("no provider of " + type.getName());
     }
     var instance = type.cast(provider.get());
     for(var setter: findSetters(type)) {
@@ -110,25 +110,24 @@ public final class Registry {
   }
 
   // Q6
-  private static final ClassValue<List<Method>> CACHE = new ClassValue<>() {
+  private static final ClassValue<List<Method>> SETTERS_CLASS_VALUE = new ClassValue<>() {
     @Override
     protected List<Method> computeValue(Class<?> type) {
-      return Arrays.stream(type.getMethods())
-          .filter(m -> !Modifier.isStatic(m.getModifiers()) &&
-                       m.isAnnotationPresent(Inject.class) &&
-                       m.getName().startsWith("set") &&
-                       m.getReturnType() == void.class && m.getParameterCount() == 1)
+      var beanInfo = Utils.beanInfo(type);
+      return Arrays.stream(beanInfo.getPropertyDescriptors())
+          .map(PropertyDescriptor::getWriteMethod)
+          .filter(setter -> setter != null && setter.isAnnotationPresent(Inject.class))
           .toList();
     }
   };
 
   static List<Method> findSetters(Class<?> type) {
-    return CACHE.get(type);
+    return SETTERS_CLASS_VALUE.get(type);
   }
 
   // Q7 BONUS
 
-  private static final ClassValue<Constructor<?>> CONSTRUCTOR_CACHE = new ClassValue<>() {
+  private static final ClassValue<Constructor<?>> CONSTRUCTOR_CLASS_VALUE = new ClassValue<>() {
     @Override
     protected Constructor<?> computeValue(Class<?> type) {
       var constructors = Arrays.stream(type.getConstructors())
@@ -145,7 +144,7 @@ public final class Registry {
   public <T> void registerProviderClass(Class<T> type, Class<? extends T> providerClass) {
     Objects.requireNonNull(type);
     Objects.requireNonNull(providerClass);
-    var constructor = CONSTRUCTOR_CACHE.get(providerClass);
+    var constructor = CONSTRUCTOR_CLASS_VALUE.get(providerClass);
     registerProvider(type, () -> {
       var args = Arrays.stream(constructor.getParameterTypes()).map(this::getInstance).toArray();
       return type.cast(Utils.invokeConstructor(constructor, args));
