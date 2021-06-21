@@ -2,20 +2,18 @@ package org.github.forax.framework.interceptor;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.UndeclaredThrowableException;
 import java.util.AbstractList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.RandomAccess;
-import java.util.function.Consumer;
 
 final class Utils {
   private Utils() {
     throw new AssertionError();
   }
 
-  static <T> List<T> reverseList(List<T> list) {
+  public static <T> List<T> reverseList(List<T> list) {
     assert list instanceof RandomAccess;
     return new AbstractList<>() {
       @Override
