@@ -134,6 +134,7 @@ public class InterceptorRegistryTest {
   class Q3 {
 
     @Retention(RUNTIME)
+    @Target(METHOD)
     private @interface Intercepted { }
 
     @Test @Tag("Q3")
@@ -281,7 +282,7 @@ public class InterceptorRegistryTest {
     }
 
     @Test @Tag("Q3")
-    public void getCallableUncheckedExceptionPropagation() {
+    public void createProxyUncheckedExceptionPropagation() {
       interface Foo {
         void bar();
       }
@@ -299,7 +300,7 @@ public class InterceptorRegistryTest {
     }
 
     @Test @Tag("Q3")
-    public void getCallableCheckedExceptionPropagation() {
+    public void createProxyCheckedExceptionPropagation() {
       interface Foo {
         void bar() throws IOException;
       }
@@ -317,7 +318,7 @@ public class InterceptorRegistryTest {
     }
 
     @Test @Tag("Q3")
-    public void getCallableErrorPropagation() {
+    public void createProxyErrorPropagation() {
       interface Foo {
         void bar();
       }
@@ -335,7 +336,7 @@ public class InterceptorRegistryTest {
     }
 
     @Test @Tag("Q3")
-    public void getCallableThrowablePropagation() {
+    public void createProxyThrowablePropagation() {
       interface Foo {
         void bar() throws Throwable;
       }
@@ -350,6 +351,34 @@ public class InterceptorRegistryTest {
       var registry = new InterceptorRegistry();
       var proxy = registry.createProxy(Foo.class, delegate);
       assertThrows(Throwable.class, proxy::bar);
+    }
+
+    @Test @Tag("Q3")
+    public void createProxyExample() {
+      interface Service {
+        @Intercepted
+        String hello(String message);
+      }
+      record ServiceImpl() implements Service {
+        @Override
+        public String hello(String message) {
+          return "hello " + message;
+        }
+      }
+
+      var registry = new InterceptorRegistry();
+      registry.addInterceptor(Intercepted.class, (method, proxy, args, proceed) -> {
+        System.out.println("enter " + method);
+        try {
+          return proceed.call();
+        } finally {
+          System.out.println("exit " + method);
+        }
+      });
+
+      var delegate = new ServiceImpl();
+      var proxy = registry.createProxy(Service.class, delegate);
+      System.out.println(proxy.hello("interceptor"));
     }
 
   }  // end Q3
