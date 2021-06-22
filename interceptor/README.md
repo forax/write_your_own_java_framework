@@ -67,8 +67,8 @@ System.out.println(proxy.hello("interceptor"));
 
 This code prints
 ```
-enter public abstract java.lang.String org.github.forax.framework.interceptor.InterceptorRegistryTest$Q3$1Service.hello(java.lang.String)
-exit public abstract java.lang.String org.github.forax.framework.interceptor.InterceptorRegistryTest$Q3$1Service.hello(java.lang.String)
+enter public abstract java.lang.String Service.hello(java.lang.String)
+exit public abstract java.lang.String Service.hello(java.lang.String)
 hello interceptor
 ```
 
