@@ -18,6 +18,7 @@ public final class InterceptorRegistry {
     Objects.requireNonNull(annotationClass);
     Objects.requireNonNull(interceptor);
     interceptorMap.computeIfAbsent(annotationClass, __ -> new ArrayList<>()).add(interceptor);
+    funCache.clear();
   }
 
   private static Object invokeDelegate(Object delegate, Method method, Object[] args) throws Exception {
@@ -36,14 +37,14 @@ public final class InterceptorRegistry {
     return Utils.reverseList(interceptors.toList()).stream()
         .reduce((__, args, delegate) -> invokeDelegate(delegate, method, args),
             (fun, interceptor) -> (proxy, args, delegate) -> interceptor.intercept(method, proxy, args, () -> fun.apply(proxy, args, delegate)),
-            (_1, _2) -> { throw null; });
+            (_1, _2) -> { throw new AssertionError(); });
   }
 
   private Fun getFunFromCache(Method method) {
     return funCache.computeIfAbsent(method, m -> getFun(findInterceptors(m), m));
   }
 
-  public <T> T createProxy(Class<? extends T> type, T delegate) {
+  public <T> T createProxy(Class<T> type, T delegate) {
     return type.cast(Proxy.newProxyInstance(type.getClassLoader(),
         new Class<?>[] { type },
         (proxy, method, args) -> getFunFromCache(method).apply(proxy, args, delegate)));

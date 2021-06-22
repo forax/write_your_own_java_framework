@@ -485,6 +485,24 @@ public class InterceptorRegistryTest {
     }
 
     @Test @Tag("Q7")
+    public void cacheCorrectlyInvalidated() {
+      interface Foo {
+        @Example1
+        default String hello(String message) {
+          return message;
+        }
+      }
+      var registry = new InterceptorRegistry();
+      registry.addInterceptor(Example1.class, (method, proxy, args, proceed) -> "1" + proceed.call());
+      var proxy1 = registry.createProxy(Foo.class, new Foo(){});
+      proxy1.hello("");  // interceptor list is cached
+
+      registry.addInterceptor(Example1.class, (method, proxy, args, proceed) -> "2" + proceed.call());
+      var proxy2 = registry.createProxy(Foo.class, new Foo() {});
+      assertEquals("12", proxy2.hello(""));
+    }
+
+    @Test @Tag("Q7")
     public void annotationOnClassMethodAndParametersDoNotRepeat() {
       @Example1
       interface Foo {
