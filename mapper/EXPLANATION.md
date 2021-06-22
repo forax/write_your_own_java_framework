@@ -231,7 +231,7 @@ Q7
           try {
             return new PropertyDescriptor(component.getName(), component.getAccessor(), null);
           } catch (IntrospectionException e) {
-            throw new IllegalStateException(e);
+            throw new AssertionError(e);
           }
         });
   }
