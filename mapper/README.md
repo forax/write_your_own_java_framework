@@ -1,9 +1,9 @@
 # Mapping objects to JSON
 
-The idea is to implement an object, the `JSONMapper`, that is able to convert an object to a JSON text.
+The idea is to implement an object, the `JSONMapper`, that is able to convert an object to a [JSON](https://json.org) text.
 
-The `JSONMapper` is able to convert
-- basic JSON type like boolean, integer or string
+A `JSONMapper` is able to convert
+- basic JSON type like boolean, int or String
 - can be configured to handle specific type like `MonthDay` of `java.time`
 - recursive types, types composed of other types, likes Java Beans or records 
 
@@ -38,7 +38,7 @@ The unit tests are in [JSONMapperTest.java](src/test/java/com/github/forax/frame
    JSON primitive values, `null`, `true`, `false`, any integers or doubles and strings.
    Then check that the tests in the nested class "Q1" all pass.
 
-2. Adds the support of Java Beans by modifying `toJSON()` to get the `BeanInfo`.
+2. Adds the support of [Java Beans](../COMPANION.md#java-bean-and-beaninfo) by modifying `toJSON()` to get the `BeanInfo`.
    Get the properties  from it and use a stream with a `collect(Collectors.joining())`
    to add the '{' and '}' and  separate the values by a comma.
    Then check that the tests in the nested class "Q2" all pass.
@@ -48,7 +48,7 @@ The unit tests are in [JSONMapperTest.java](src/test/java/com/github/forax/frame
 
 3. The problem with the current solution is that the `BeanInfo` and the properties are computed each times
    even if the properties of a class are always the same.
-   The idea is to declare a `ClassValue<PropertyDescriptor[]>` that caches an array of properties for a class.
+   The idea is to declare a [ClassValue](../COMPANION.md#classvalue) that caches an array of properties for a class.
    So modify the method `toJSON()` to use a `ClassValue<PropertyDescriptor[]>`.
    All the tests from the previous questions should still pass.
 
@@ -72,7 +72,7 @@ The unit tests are in [JSONMapperTest.java](src/test/java/com/github/forax/frame
    Internally, a HashMap that associates a class to the computation of the JSON text using the lambda.
    Then check that the tests in the nested class "Q4" all pass.
 
-   **Note**: the lambda takes a value and returns a value thus it can be typed by a java.util.function.Function.
+   **Note**: the lambda takes a value and returns a value thus it can be typed by a `java.util.function.Function`.
    The type of the class, and the type of the first parameter of the lambda are the same,
    you need to introduce a type parameter for that. Exactly the type of the first parameter of the
    lambda is a super type of the type of the class.
@@ -90,7 +90,7 @@ The unit tests are in [JSONMapperTest.java](src/test/java/com/github/forax/frame
    and in that case, use the name provided by the annotation instead of the name of the property.
    Then check that the tests in the nested class "Q5" all pass
 
-7. Modify the code to support not only Java beans but also records by refactoring
+7. Modify the code to support not only Java beans but also [records](../COMPANION.md#record) by refactoring
    your code to have two private methods  that takes a Class and returns either the properties of the bean
    or the properties of the records.
    ```java
