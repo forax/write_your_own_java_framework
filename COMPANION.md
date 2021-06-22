@@ -96,6 +96,7 @@ The reflection API, the package `java.lang.reflect`, provide the capabilities to
   [create a new instance from a ](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/reflect/Constructor.html#newInstance(java.lang.Object...)) `Constructor`
 - get annotations and compiler information stored in the classfile (the .class file)
 
+
 ### Class.getMethod(), Class.getMethods(), Class.getConstructors()
 
 To get a specific method (static or not), the method [Class.getMethod()](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/Class.html#getMethod(java.lang.String,java.lang.Class...))
@@ -289,6 +290,7 @@ A _dynamic_ proxy is a class generated at runtime that implement a list of inter
 done by generating the classfile in an array of bytes at runtime and uses a
 [ClassLoader](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/ClassLoader.html)
 to load that array of bytes as an actual class.
+
 
 ### InvocationHandler, Proxy.newProxyInstance()
 
