@@ -119,7 +119,7 @@ cache the part of the computation that can be cached.
    For now, the parameter `delegate` is ignored and the parameter `proceed` of the interceptor is always 'null'.
    Check that the tests in the nested class "Q1" all pass.
    
-2. Adds a package private instance method `findInterceptors(method)` that takes a `java.lang.reflect.Method` as
+2. Add a package private instance method `findInterceptors(method)` that takes a `java.lang.reflect.Method` as
    parameter and returns a `java.util.stream.Stream` of all interceptors that should call be called to intercept
    that method. The idea is to gather all annotations of that method (cf [COMPANION](../COMPANION.md#annotation))
    and find all corresponding interceptors.
