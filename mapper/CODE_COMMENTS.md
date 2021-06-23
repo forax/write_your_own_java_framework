@@ -1,5 +1,6 @@
+# Code comments
 
-Q1
+### Q1
 
 ```java
   // Q1
@@ -21,7 +22,7 @@ Q1
   }
 ```
 
-Q2
+### Q2
 
 ```java
   public String toJSON(Object o) {
@@ -46,11 +47,11 @@ Q2
   }
 ```
 
-Q3
+### Q3
 
 ```java
   private interface Generator {
-    String generate(JSONMapper mapper, Object object);
+    String generate(JSONSerializer serializer, Object object);
   }
 
   private static final ClassValue<PropertyDescriptor[]> PROPERTIES_CLASS_VALUE = new ClassValue<>() {
@@ -82,17 +83,17 @@ Q3
         .map(property -> {
           var name = property.getName();
           var getter = property.getReadMethod();
-          return "\"" + name + "\": " + mapper.toJSON(Utils.invoke(o, getter));
+          return "\"" + name + "\": " + serializer.toJSON(Utils.invoke(o, getter));
         })
         .collect(joining(", ", "{", "}"));
   }
 ```
 
-Q4
+### Q4
 
 ```java
   private interface Generator {
-    String generate(JSONMapper mapper, Object object);
+    String generate(JSONSerializer serializer, Object object);
   }
 
   private static final ClassValue<Generator> GENERATOR_CLASS_VALUE = new ClassValue<>() {
@@ -104,11 +105,11 @@ Q4
           .<Generator>map(property -> {
             var key = "\"" + property.getName() + "\": ";
             var getter = property.getReadMethod();
-            return (mapper, o) -> key + mapper.toJSON(Utils.invoke(o, getter));
+            return (serializer, o) -> key + serializer.toJSON(Utils.invoke(o, getter));
           })
           .toList();
-      return (mapper, object) -> list.stream()
-          .map(generator -> generator.generate(mapper, object))
+      return (serializer, object) -> list.stream()
+          .map(generator -> generator.generate(serializer, object))
           .collect(joining(", ", "{", "}"));
     }
   };
@@ -132,11 +133,11 @@ Q4
   }
 ```
 
-Q5
+### Q5
 
 ```java
   private interface Generator {
-    String generate(JSONMapper mapper, Object object);
+    String generate(JSONSerializer serializer, Object object);
   }
   
   private final HashMap<Class<?>, Generator> map = new HashMap<>();
@@ -144,7 +145,7 @@ Q5
   public <T> void configure(Class<? extends T> type, Function<? super T, String> function) {
     Objects.requireNonNull(type);
     Objects.requireNonNull(function);
-    var result = map.putIfAbsent(type, (mapper, object) -> function.apply(type.cast(object)));
+    var result = map.putIfAbsent(type, (serializer, object) -> function.apply(type.cast(object)));
     if (result != null) {
       throw new IllegalStateException("already a function registered for type " + type.getName());
     }
@@ -173,7 +174,7 @@ Q5
   }
 ```
 
-Q6
+### Q6
 
 ```java
   private static final ClassValue<Generator> GENERATOR_CLASS_VALUE = new ClassValue<>() {
@@ -187,17 +188,17 @@ Q6
             var propertyAnnotation = getter.getAnnotation(JSONProperty.class);
             var propertyName = propertyAnnotation == null? property.getName(): propertyAnnotation.value();
             var key = "\"" + propertyName + "\": ";
-            return (mapper, o) -> key + mapper.toJSON(Utils.invoke(o, getter));
+            return (serializer, o) -> key + serializer.toJSON(Utils.invoke(o, getter));
           })
           .toList();
-      return (mapper, object) -> list.stream()
-          .map(generator -> generator.generate(mapper, object))
+      return (serializer, object) -> list.stream()
+          .map(generator -> generator.generate(serializer, object))
           .collect(joining(", ", "{", "}"));
     }
   };
 ```
 
-Q7
+### Q7
 
 ```java
   private static final ClassValue<Generator> GENERATOR_CLASS_VALUE = new ClassValue<>() {
@@ -210,11 +211,11 @@ Q7
             var propertyAnnotation = getter.getAnnotation(JSONProperty.class);
             var propertyName = propertyAnnotation == null? property.getName(): propertyAnnotation.value();
             var key = "\"" + propertyName + "\": ";
-            return (mapper, o) -> key + mapper.toJSON(Utils.invoke(o, getter));
+            return (serializer, o) -> key + serializer.toJSON(Utils.invoke(o, getter));
           })
           .toList();
-      return (mapper, object) -> list.stream()
-          .map(generator -> generator.generate(mapper, object))
+      return (serializer, object) -> list.stream()
+          .map(generator -> generator.generate(serializer, object))
           .collect(joining(", ", "{", "}"));
     }
   };

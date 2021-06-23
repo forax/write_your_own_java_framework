@@ -1,8 +1,8 @@
-# Mapping objects to JSON
+# Serializing objects to JSON
 
-The idea is to implement an object, the `JSONMapper`, that is able to convert an object to a [JSON](https://json.org) text.
+The idea is to implement an object, the `JSONSerializer`, that is able to convert an object to a [JSON](https://json.org) text.
 
-A `JSONMapper` is able to convert
+A `JSONSerializer` is able to convert
 - basic JSON type like boolean, int or String
 - can be configured to handle specific type like `MonthDay` of `java.time`
 - recursive types, types composed of other types, likes Java Beans or records 
@@ -20,21 +20,21 @@ class Address {
 record Person(@JSONProperty("birth-day") MonthDay birthday, Address address) { }
 ```
 
-We can create a `JSONMapper`, configure it to use a user defined format for instances of the class `MonthDay`
+We can create a `JSONSerializer`, configure it to use a user defined format for instances of the class `MonthDay`
 and calls `toJSON()` to get the corresponding JSON text.
 
 ```java
-var mapper = new JSONMapper();
-mapper.configure(MonthDay.class,
-    monthDay -> mapper.toJSON(monthDay.getMonth() + "-" + monthDay.getDayOfMonth()));
+var serializer = new JSONSerializer();
+serializer.configure(MonthDay.class,
+    monthDay -> serializer.toJSON(monthDay.getMonth() + "-" + monthDay.getDayOfMonth()));
 
 var person = new Person(MonthDay.of(4, 17), new Address());
-var json = mapper.toJSON(person);  // {"birth-day": "APRIL-17", "address": {"international": false}}
+var json = serializer.toJSON(person);  // {"birth-day": "APRIL-17", "address": {"international": false}}
 ```
 
-The unit tests are in [JSONMapperTest.java](src/test/java/com/github/forax/framework/mapper/JSONMapperTest.java)
+The unit tests are in [JSONSerializerTest.java](src/test/java/com/github/forax/framework/mapper/JSONSerializerTest.java)
 
-1. Create the class `JSONMapper` and adds the method `toJSON()` that works only with
+1. Create the class `JSONSerializer` and adds the method `toJSON()` that works only with
    JSON primitive values, `null`, `true`, `false`, any integers or doubles and strings.
    Then check that the tests in the nested class "Q1" all pass.
 
@@ -53,14 +53,15 @@ The unit tests are in [JSONMapperTest.java](src/test/java/com/github/forax/frame
    All the tests from the previous questions should still pass.
 
 4. We can cache more values, by example the property name and the getter are always the same for a pair of key/value.
-   We can observe that from the JSONMapper POV, there are two kinds of type,
+   We can observe that from the JSONSerializer POV, there are two kinds of type,
    - either it's a primitive those only need the object to generate the JSON text
-   - or it's a bean type, those need the object, and the mapper to recursively call `mapp.toJSON()` on the properties
-   Thus to represent the computation to do we can declare a private functional interface `Generator` that takes
-   a `JSONMapper` and an `Object` as parameter.
+   - or it's a bean type, those need the object, and the serializer to recursively call `serializer.toJSON()`
+     on the properties
+   Thus to represent the computation, we can declare a private functional interface `Generator` that takes
+   a `JSONSerializer` and an `Object` as parameter.
    ```java
    private interface Generator {
-     String generate(JSONMapper mapper, Object bean);
+     String generate(JSONSerializer serializer, Object bean);
    }
    ```
    Change your code to use `ClassValue<Gneerator>` instead of a `ClassValue<PropertyDescriptor[]>,

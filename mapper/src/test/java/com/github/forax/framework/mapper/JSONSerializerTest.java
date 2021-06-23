@@ -15,20 +15,20 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SuppressWarnings({"unused", "static-method"})
-public class JSONMapperTest {
+public class JSONSerializerTest {
 
   @Nested
   class Q1 {
     @Test
     public void toJSONPrimitive() {
-      var mapper = new JSONMapper();
+      var serializer = new JSONSerializer();
       assertAll(
-          () -> assertEquals("null", mapper.toJSON(null)),
-          () -> assertEquals("true", mapper.toJSON(true)),
-          () -> assertEquals("false", mapper.toJSON(false)),
-          () -> assertEquals("3", mapper.toJSON(3)),
-          () -> assertEquals("4.0", mapper.toJSON(4.0)),
-          () -> assertEquals("\"foo\"", mapper.toJSON("foo"))
+          () -> assertEquals("null", serializer.toJSON(null)),
+          () -> assertEquals("true", serializer.toJSON(true)),
+          () -> assertEquals("false", serializer.toJSON(false)),
+          () -> assertEquals("3", serializer.toJSON(3)),
+          () -> assertEquals("4.0", serializer.toJSON(4.0)),
+          () -> assertEquals("\"foo\"", serializer.toJSON("foo"))
       );
     }
   }
@@ -67,9 +67,9 @@ public class JSONMapperTest {
   class Q2 {
     @Test
     public void toJSONWithASimpleClass() {
-      var mapper = new JSONMapper();
+      var serializer = new JSONSerializer();
       var car = new Car("Marty");
-      var json = mapper.toJSON(car);
+      var json = serializer.toJSON(car);
       assertEquals("""
           {"owner": "Marty"}\
           """, json);
@@ -77,9 +77,9 @@ public class JSONMapperTest {
 
     @Test
     public void toJSONWithAClass() {
-      var mapper = new JSONMapper();
+      var serializer = new JSONSerializer();
       var alien = new Alien("Elvis", "Proxima Centauri");
-      var json = mapper.toJSON(alien);
+      var json = serializer.toJSON(alien);
       var expected1 = """
           {"name": "Elvis", "planet": "Proxima Centauri"}\
           """;
@@ -95,9 +95,9 @@ public class JSONMapperTest {
     @Test
     public void toJSONEmptyClass() {
       class Empty { }
-      var mapper = new JSONMapper();
+      var serializer = new JSONSerializer();
       var empty = new Empty();
-      var json = mapper.toJSON(empty);
+      var json = serializer.toJSON(empty);
       assertEquals("{}", json);
     }
   }
@@ -139,17 +139,17 @@ public class JSONMapperTest {
   class Q5 {
     @Test
     public void toJSONWithConfigure() {
-      var mapper = new JSONMapper();
-      mapper.configure(LocalDateTime.class, time -> time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-      assertEquals("2021-06-16T20:53:17", mapper.toJSON(LocalDateTime.of(2021, 6, 16, 20, 53, 17)));
+      var serializer = new JSONSerializer();
+      serializer.configure(LocalDateTime.class, time -> time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+      assertEquals("2021-06-16T20:53:17", serializer.toJSON(LocalDateTime.of(2021, 6, 16, 20, 53, 17)));
     }
 
     @Test
     public void toJSONBeanWithConfigure() {
-      var mapper = new JSONMapper();
-      mapper.configure(LocalDateTime.class, time -> time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+      var serializer = new JSONSerializer();
+      serializer.configure(LocalDateTime.class, time -> time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
       var startDate = new StartDate(LocalDateTime.of(2021, 7, 1, 20, 7));
-      var json = mapper.toJSON(startDate);
+      var json = serializer.toJSON(startDate);
       assertEquals("""
       {"time": 2021-07-01T20:07:00}\
       """, json);
@@ -157,17 +157,17 @@ public class JSONMapperTest {
 
     @Test
     public void configureTwice() {
-      var mapper = new JSONMapper();
-      mapper.configure(LocalTime.class, __ -> "foo");
-      assertThrows(IllegalStateException.class, () -> mapper.configure(LocalTime.class, __ -> "bar"));
+      var serializer = new JSONSerializer();
+      serializer.configure(LocalTime.class, __ -> "foo");
+      assertThrows(IllegalStateException.class, () -> serializer.configure(LocalTime.class, __ -> "bar"));
     }
 
     @Test
     public void configurePreconditions() {
-      var mapper = new JSONMapper();
+      var serializer = new JSONSerializer();
       assertAll(
-          () -> assertThrows(NullPointerException.class, () -> mapper.configure(null, String::toString)),
-          () -> assertThrows(NullPointerException.class, () -> mapper.configure(Timestamp.class, null))
+          () -> assertThrows(NullPointerException.class, () -> serializer.configure(null, String::toString)),
+          () -> assertThrows(NullPointerException.class, () -> serializer.configure(Timestamp.class, null))
       );
     }
   }
@@ -176,9 +176,9 @@ public class JSONMapperTest {
   class Q6 {
     @Test
     public void toJSONWithJSONProperty() {
-      var mapper = new JSONMapper();
+      var serializer = new JSONSerializer();
       var person = new Person("Bob", "Hunky");
-      var json = mapper.toJSON(person);
+      var json = serializer.toJSON(person);
       assertEquals("""
           {"first-name": "Bob", "last-name": "Hunky"}\
           """,
@@ -201,9 +201,9 @@ public class JSONMapperTest {
     @Test
     public void toJSONWithARecord() {
       record Person(String name, int age) { }
-      var mapper = new JSONMapper();
+      var serializer = new JSONSerializer();
       var person = new Person("Ana", 37);
-      var json = mapper.toJSON(person);
+      var json = serializer.toJSON(person);
       assertEquals("""
           {"name": "Ana", "age": 37}\
           """,
@@ -213,9 +213,9 @@ public class JSONMapperTest {
     @Test
     public void toJSONEmptyRecord() {
       record Empty() { }
-      var mapper = new JSONMapper();
+      var serializer = new JSONSerializer();
       var empty = new Empty();
-      var json = mapper.toJSON(empty);
+      var json = serializer.toJSON(empty);
       assertEquals("{}", json);
     }
 
@@ -223,9 +223,9 @@ public class JSONMapperTest {
     public void toJSONRecursive() {
       record Address(String street) { }
       record Person(String name, Address address) { }
-      var mapper = new JSONMapper();
+      var serializer = new JSONSerializer();
       var person = new Person("Bob", new Address("21 Jump Street"));
-      var json = mapper.toJSON(person);
+      var json = serializer.toJSON(person);
       assertEquals("""
           {"name": "Bob", "address": {"street": "21 Jump Street"}}\
           """,
@@ -234,10 +234,10 @@ public class JSONMapperTest {
 
     @Test
     public void toJSONFullExample() {
-      var mapper = new JSONMapper();
-      mapper.configure(MonthDay.class, monthDay -> mapper.toJSON(monthDay.getMonth() + "-" + monthDay.getDayOfMonth()));
+      var serializer = new JSONSerializer();
+      serializer.configure(MonthDay.class, monthDay -> serializer.toJSON(monthDay.getMonth() + "-" + monthDay.getDayOfMonth()));
       var person = new PersonInfo(MonthDay.of(4, 17), new AddressInfo());
-      var json = mapper.toJSON(person);
+      var json = serializer.toJSON(person);
       assertEquals("""
           {"birth-day": "APRIL-17", "address": {"international": false}}\
           """,
