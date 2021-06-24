@@ -10,28 +10,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class IncompleteJSONParserTest {
   private static Object asJava(String text) {
-    var map = new HashMap<String, Object>();
+    record Context(String key, Object data) {}
     var visitor = new JSONVisitor() {
-      private String key;
       private Object result;
-      private ArrayDeque<Object> stack = new ArrayDeque<>();
-
-      @Override
-      public void key(String key) {
-        this.key = key;
-      }
+      private final ArrayDeque<Context> stack = new ArrayDeque<>();
 
       @Override
       @SuppressWarnings("unchecked")
-      public void value(Object value) {
-        var data = stack.peek();
+      public void value(String key, Object value) {
+        var data = stack.peek().data;
         if (data instanceof Map<?,?> map) {
           ((Map<String, Object>) map).put(key, value);
-          this.key = null;
           return;
         }
         if (data instanceof List<?> list) {
@@ -42,32 +36,32 @@ class IncompleteJSONParserTest {
       }
 
       @Override
-      public void startObject() {
-        stack.push(new HashMap<String, Object>());
+      public void startObject(String key) {
+        stack.push(new Context(key, new HashMap<String, Object>()));
       }
 
       @Override
       public void endObject() {
-        var data = stack.pop();
+        var context = stack.pop();
         if (stack.isEmpty()) {
-          result = data;
+          result = context.data;
         } else {
-          value(data);
+          value(context.key, context.data);
         }
       }
 
       @Override
-      public void startArray() {
-        stack.push(new ArrayList<Object>());
+      public void startArray(String key) {
+        stack.push(new Context(key, new ArrayList<Object>()));
       }
 
       @Override
       public void endArray() {
-        var data = stack.pop();
+        var context = stack.pop();
         if (stack.isEmpty()) {
-          result = data;
+          result = context.data;
         } else {
-          value(data);
+          value(context.key, context.data);
         }
       }
     };

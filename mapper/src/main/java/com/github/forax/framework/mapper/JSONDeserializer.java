@@ -3,11 +3,15 @@ package com.github.forax.framework.mapper;
 import java.beans.FeatureDescriptor;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.stream.Collectors;
+import java.util.Collection;
+import java.util.List;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toMap;
@@ -29,50 +33,110 @@ public class JSONDeserializer {
     return typeReferenceType.getActualTypeArguments()[0];
   }
 
-  private IncompleteJSONParser.JSONVisitor findVisitor(Type type) {
-    // use a switch on type
-    if (type instanceof Class<?> clazz) {
+  private interface Appender<B> {
+    void append(B builder, String key, Object value);
+  }
+
+  private record Collector<B>(Supplier<B> supplier, Appender<B> appender, Function<B, Object> finisher) {
+    static Collector<Object> bean(Class<?> clazz) {
       var beanInfo = Utils.beanInfo(clazz);
       var setterMap = Arrays.stream(beanInfo.getPropertyDescriptors())
           .collect(toMap(FeatureDescriptor::getName, PropertyDescriptor::getWriteMethod));
-      var bean = Utils.newInstance(findDefaultConstructor(clazz));
-      return new IncompleteJSONParser.JSONVisitor() {
-        private Method setter;
-
-        @Override
-        public void key(String key) {
-           setter = setterMap.get(key);
-           if (setter == null) {
-             throw new IllegalStateException("unknown property " + key);
-           }
-        }
-
-        @Override
-        public void value(Object value) {
-          Utils.invoke(bean, setter, value);
-          setter = null;
-        }
-
-        @Override
-        public void startObject() {}
-
-        @Override
-        public void endObject() {}
-
-        @Override
-        public void startArray() {
-          throw new IllegalStateException("unexpected start of an array");
-        }
-
-        @Override
-        public void endArray() {}
-      };
+      var constructor = findDefaultConstructor(clazz);
+      return new Collector<>(
+          () -> Utils.newInstance(constructor),
+          (builder, key, value) -> Utils.invoke(builder, setterMap.get(key), value),
+          b -> b);
     }
-    return null;
+    static Collector<List<Object>> list() {
+      return new Collector<>(ArrayList::new, (list, key, value) -> list.add(value), List::copyOf);
+    }
+  }
+
+  /*
+  private interface TypeWalker {
+    Class<?> rawContainer();
+    Class<?> rawValue();
+    Type container();
+    Type value();
+
+    TypeWalker key(String key);
+    TypeWalker element();
+  }
+  */
+
+  private static Type findQualifiedType(String key, Type type) {
+    var clazz = (Class<?>) type;
+    var beanInfo = Utils.beanInfo(clazz);
+    return Arrays.stream(beanInfo.getPropertyDescriptors())
+        .filter(property -> property.getName().equals(key))
+        .map(PropertyDescriptor::getPropertyType)
+        .findFirst().orElseThrow();
+  }
+
+  private static Type findComponentType(Type type) {
+    if (type instanceof ParameterizedType parameterizedType) {
+      var rawType = (Class<?>) parameterizedType.getRawType();
+      if (rawType == List.class) {
+        return parameterizedType.getActualTypeArguments()[0];
+      }
+    }
+    throw new IllegalStateException("can not find component type " + type);
   }
 
   public Object parseJSON(String text, Type type) {
-    return null;
+    record Context(String key, Type type, Collector<Object> collector, Object builder) { }
+    var visitor = new IncompleteJSONParser.JSONVisitor() {
+      private final ArrayDeque<Context> contexts = new ArrayDeque<>();
+      private Object result;
+
+      @Override
+      public void value(String key, Object value) {
+        Context context = contexts.peek();
+        context.collector.appender.append(context.builder, key, value);
+      }
+
+      @Override
+      public void startObject(String key) {
+        var context = contexts.peek();
+        var itemType = findQualifiedType(key, context == null? type: context.type);
+        var factory = Collector.bean((Class<?>) type);
+        contexts.push(new Context(key, itemType, factory, factory.supplier.get()));
+      }
+
+      @Override
+      public void endObject() {
+        var context = contexts.pop();
+        var finished = context.collector.finisher.apply(context.builder);
+        if (contexts.isEmpty()) {
+          this.result = finished;
+        } else {
+          contexts.peek().collector.appender.append(context.builder, context.key, finished);
+        }
+      }
+
+      @Override
+      public void startArray(String key) {
+        var context = contexts.peek();
+        var itemType = findComponentType(findQualifiedType(key, context == null? type: context.type));
+        @SuppressWarnings("unchecked")
+        var factory = (Collector<Object>) (Collector<?>) Collector.list();
+        contexts.push(new Context(key, itemType, factory, factory.supplier.get()));
+      }
+
+      @Override
+      public void endArray() {
+        var context = contexts.pop();
+        var finished = context.collector.finisher.apply(context.builder);
+        if (contexts.isEmpty()) {
+          this.result = finished;
+        } else {
+          contexts.peek().collector.appender.append(context.builder, context.key, finished);
+        }
+      }
+    };
+    IncompleteJSONParser.parse(text, visitor);
+    return visitor.result;
   }
 
   public <T> T parseJSON(String text, Class<T> type) {
