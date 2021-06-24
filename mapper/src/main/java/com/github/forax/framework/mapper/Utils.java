@@ -6,7 +6,9 @@ import java.beans.Introspector;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.RecordComponent;
 import java.util.AbstractList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.RandomAccess;
 
@@ -40,9 +42,25 @@ final class Utils {
     throw (T) cause;
   }
 
-  public static <T> T newInstance(Constructor<T> constructor) {
+  public static Constructor<?> defaultConstructor(Class<?> beanType) {
     try {
-      return constructor.newInstance();
+      return beanType.getConstructor();
+    } catch (NoSuchMethodException e) {
+      throw (NoSuchMethodError) new NoSuchMethodError("no public default constructor").initCause(e);
+    }
+  }
+
+  public static Constructor<?> canonicalConstructor(Class<?> recordClass, RecordComponent[] components) {
+    try {
+      return recordClass.getConstructor(Arrays.stream(components).map(RecordComponent::getType).toArray(Class[]::new));
+    } catch (NoSuchMethodException e) {
+      throw (NoSuchMethodError) new NoSuchMethodError("no public canonical constructor").initCause(e);
+    }
+  }
+
+  public static <T> T newInstance(Constructor<T> constructor, Object... args) {
+    try {
+      return constructor.newInstance(args);
     } catch (IllegalArgumentException e) {
       throw new AssertionError(e);
     } catch (InstantiationException e) {
