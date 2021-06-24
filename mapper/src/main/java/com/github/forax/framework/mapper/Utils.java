@@ -6,6 +6,9 @@ import java.beans.Introspector;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.AbstractList;
+import java.util.List;
+import java.util.RandomAccess;
 
 final class Utils {
   private Utils() {
@@ -49,5 +52,20 @@ final class Utils {
     } catch (InvocationTargetException e) {
       throw rethrow(e.getCause());
     }
+  }
+
+  public static <T> List<T> reverseList(List<T> list) {
+    assert list instanceof RandomAccess;
+    return new AbstractList<>() {
+      @Override
+      public T get(int i) {
+        return list.get(list.size() - 1 - i);
+      }
+
+      @Override
+      public int size() {
+        return list.size();
+      }
+    };
   }
 }

@@ -13,21 +13,6 @@ final class Utils {
     throw new AssertionError();
   }
 
-  public static <T> List<T> reverseList(List<T> list) {
-    assert list instanceof RandomAccess;
-    return new AbstractList<>() {
-      @Override
-      public T get(int i) {
-        return list.get(list.size() - 1 - i);
-      }
-
-      @Override
-      public int size() {
-        return list.size();
-      }
-    };
-  }
-
   private static final Map<String, Object> DEFAULT_VALUES = Map.of(
       "Z", false, "B", (byte) 0, "C", '\0', "S", (short) 0, "I", 0, "J", 0L, "F", 0f, "D", 0.);
 
@@ -50,5 +35,20 @@ final class Utils {
   @SuppressWarnings("unchecked")   // very wrong but works
   private static <T extends Throwable> AssertionError rethrow(Throwable cause) throws T {
     throw (T) cause;
+  }
+
+  public static <T> List<T> reverseList(List<T> list) {
+    assert list instanceof RandomAccess;
+    return new AbstractList<>() {
+      @Override
+      public T get(int i) {
+        return list.get(list.size() - 1 - i);
+      }
+
+      @Override
+      public int size() {
+        return list.size();
+      }
+    };
   }
 }

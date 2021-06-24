@@ -15,15 +15,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class IncompleteJSONParserTest {
   private static Object asJava(String text) {
-    record Context(String key, Object data) {}
     var visitor = new JSONVisitor() {
       private Object result;
-      private final ArrayDeque<Context> stack = new ArrayDeque<>();
+      private final ArrayDeque<Object> stack = new ArrayDeque<>();
 
       @Override
       @SuppressWarnings("unchecked")
       public void value(String key, Object value) {
-        var data = stack.peek().data;
+        var data = stack.peek();
         if (data instanceof Map<?,?> map) {
           ((Map<String, Object>) map).put(key, value);
           return;
@@ -37,31 +36,31 @@ class IncompleteJSONParserTest {
 
       @Override
       public void startObject(String key) {
-        stack.push(new Context(key, new HashMap<String, Object>()));
+        stack.push(new HashMap<String, Object>());
       }
 
       @Override
-      public void endObject() {
-        var context = stack.pop();
+      public void endObject(String key) {
+        var data = stack.pop();
         if (stack.isEmpty()) {
-          result = context.data;
+          result = data;
         } else {
-          value(context.key, context.data);
+          value(key, data);
         }
       }
 
       @Override
       public void startArray(String key) {
-        stack.push(new Context(key, new ArrayList<Object>()));
+        stack.push(new ArrayList<>());
       }
 
       @Override
-      public void endArray() {
-        var context = stack.pop();
+      public void endArray(String key) {
+        var data = stack.pop();
         if (stack.isEmpty()) {
-          result = context.data;
+          result = data;
         } else {
-          value(context.key, context.data);
+          value(key, data);
         }
       }
     };
