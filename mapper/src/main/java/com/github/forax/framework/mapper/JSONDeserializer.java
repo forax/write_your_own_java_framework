@@ -24,6 +24,11 @@ public class JSONDeserializer {
       void populate(B builder, String key, Object value);
     }
 
+    @SuppressWarnings("unchecked")
+    private Collector<Object> raw() {
+      return (Collector<Object>) (Collector<?>) this;
+    }
+
     public Collector {
       Objects.requireNonNull(qualifier);
       Objects.requireNonNull(supplier);
@@ -51,11 +56,6 @@ public class JSONDeserializer {
           (bean, key, value) -> Utils.invokeMethod(bean, findProperty(propertyMap, key, beanClass).getWriteMethod(), value),
           bean -> bean
       );
-    }
-
-    @SuppressWarnings("unchecked")
-    private Collector<Object> raw() {
-      return (Collector<Object>) (Collector<?>) this;
     }
 
     public static Collector<List<Object>> list(Type element) {
@@ -87,7 +87,7 @@ public class JSONDeserializer {
     }
   }
 
-
+  @FunctionalInterface
   public interface TypeMatcher {
     Optional<Collector<?>> match(Type type);
   }

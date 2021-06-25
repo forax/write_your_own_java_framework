@@ -522,5 +522,21 @@ public class JSONDeserializerTest {
       assertEquals(List.of(12, "foo", 45.2), bean.values);
     }
 
+    @Test @Tag("Q7")
+    public void parseJSONExample() {
+      record Person(String name, int age) {
+        public Person {}
+      }
+
+      var deserializer = new JSONDeserializer();
+      deserializer.addTypeMatcher(type -> Optional.of(Utils.erase(type)).filter(Class::isRecord).map(JSONDeserializer.Collector::record));
+      var person = deserializer.parseJSON("""
+        {
+          "name": "Ana", "age": 24
+        }
+        """, Person.class);
+      assertEquals(new Person("Ana", 24), person);
+    }
+
   }  // end of Q7
 }
