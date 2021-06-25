@@ -12,6 +12,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 class ToyJSONParser {
+  private ToyJSONParser() {
+    throw new AssertionError();
+  }
+
   enum Kind {
     NULL("(null)"),
     TRUE("(true)"),
