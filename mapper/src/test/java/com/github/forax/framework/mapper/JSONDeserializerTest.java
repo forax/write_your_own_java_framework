@@ -9,6 +9,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -330,19 +331,19 @@ public class JSONDeserializerTest {
       var listOfIntegers = IntArrayBean.class.getMethod("setValues", List.class).getGenericParameterTypes()[0];
       var deserializer = new JSONDeserializer();
 
-      deserializer.addTypeMatcher(type -> {
-        if (type instanceof ParameterizedType parameterizedType) {
-          if (parameterizedType.getRawType() == List.class) {
-            return Optional.of(JSONDeserializer.Collector.list(parameterizedType.getActualTypeArguments()[0]));
-          }
-        }
-        return Optional.empty();
-      });
+//      deserializer.addTypeMatcher(type -> {
+//        if (type instanceof ParameterizedType parameterizedType) {
+//          if (parameterizedType.getRawType() == List.class) {
+//            return Optional.of(JSONDeserializer.Collector.list(parameterizedType.getActualTypeArguments()[0]));
+//          }
+//        }
+//        return Optional.empty();
+//      });
 
-//      deserializer.addTypeMatcher(type -> Optional.of(type)
-//          .flatMap(t -> t instanceof ParameterizedType parameterizedType? Optional.of(parameterizedType): Optional.empty())
-//          .filter(t -> t.getRawType() == List.class)
-//          .map(t -> JSONDeserializer.Collector.list(t.getActualTypeArguments()[0])));
+      deserializer.addTypeMatcher(type -> Optional.of(type)
+          .flatMap(t -> t instanceof ParameterizedType parameterizedType? Optional.of(parameterizedType): Optional.empty())
+          .filter(t -> t.getRawType() == List.class)
+          .map(t -> JSONDeserializer.Collector.list(t.getActualTypeArguments()[0])));
       @SuppressWarnings("unchecked")
       var list = (List<Integer>) deserializer.parseJSON("""
         [
@@ -383,6 +384,56 @@ public class JSONDeserializerTest {
         }
         """, String.class);
       assertEquals("{foo=3, bar=hello}", string);
+    }
+
+    @SuppressWarnings("unused")
+    public final static class Car {
+      private String owner;
+      private String color;
+
+      public Car() {}
+
+      public Car(String owner, String color) {
+        this.owner = owner;
+        this.color = color;
+      }
+
+      public void setOwner(String owner) {
+        this.owner = owner;
+      }
+      public void setColor(String color) {
+        this.color = color;
+      }
+
+      @Override
+      public boolean equals(Object o) {
+        return o instanceof Car car && owner.equals(car.owner) && color.equals(car.color);
+      }
+
+      @Override
+      public int hashCode() {
+        return Objects.hash(owner, color);
+      }
+    }
+
+    @Test @Tag("Q5")
+    public void parseJSONListOfCar() throws NoSuchFieldException {
+      var listOfCar = new Object() {
+        List<Car> exemplar;
+      }.getClass().getDeclaredField("exemplar").getGenericType();
+
+      var deserializer = new JSONDeserializer();
+      deserializer.addTypeMatcher(type -> Optional.of(type)
+          .flatMap(t -> t instanceof ParameterizedType parameterizedType? Optional.of(parameterizedType): Optional.empty())
+          .filter(t -> t.getRawType() == List.class)
+          .map(t -> JSONDeserializer.Collector.list(t.getActualTypeArguments()[0])));
+      var string = deserializer.parseJSON("""
+        [
+          { "owner": "Bob", "color": "red" },
+          { "owner": "Ana", "color": "black" }
+        ]
+        """, listOfCar);
+      assertEquals(List.of(new Car("Bob", "red"), new Car("Ana", "black")), string);
     }
 
     @Test @Tag("Q5")
