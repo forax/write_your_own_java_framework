@@ -1,6 +1,5 @@
 package com.github.forax.framework.mapper;
 
-import com.github.forax.framework.mapper.JSONDeserializer.Collector;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -326,24 +325,18 @@ public class JSONDeserializerTest {
       }
     }
 
+    private static JSONDeserializer.TypeMatcher listTypeMatcher() {
+      return type -> Optional.of(type)
+          .flatMap(t -> t instanceof ParameterizedType parameterizedType? Optional.of(parameterizedType): Optional.empty())
+          .filter(t -> t.getRawType() == List.class)
+          .map(t -> JSONDeserializer.Collector.list(t.getActualTypeArguments()[0]));
+    }
+
     @Test @Tag("Q5")
     public void parseJSONWithAList() throws NoSuchMethodException {
       var listOfIntegers = IntArrayBean.class.getMethod("setValues", List.class).getGenericParameterTypes()[0];
       var deserializer = new JSONDeserializer();
-
-//      deserializer.addTypeMatcher(type -> {
-//        if (type instanceof ParameterizedType parameterizedType) {
-//          if (parameterizedType.getRawType() == List.class) {
-//            return Optional.of(JSONDeserializer.Collector.list(parameterizedType.getActualTypeArguments()[0]));
-//          }
-//        }
-//        return Optional.empty();
-//      });
-
-      deserializer.addTypeMatcher(type -> Optional.of(type)
-          .flatMap(t -> t instanceof ParameterizedType parameterizedType? Optional.of(parameterizedType): Optional.empty())
-          .filter(t -> t.getRawType() == List.class)
-          .map(t -> JSONDeserializer.Collector.list(t.getActualTypeArguments()[0])));
+      deserializer.addTypeMatcher(listTypeMatcher());
       @SuppressWarnings("unchecked")
       var list = (List<Integer>) deserializer.parseJSON("""
         [
@@ -356,10 +349,7 @@ public class JSONDeserializerTest {
     @Test @Tag("Q5")
     public void parseJSONWithABeanAndAList() {
       var deserializer = new JSONDeserializer();
-      deserializer.addTypeMatcher(type -> Optional.of(type)
-          .flatMap(t -> t instanceof ParameterizedType parameterizedType? Optional.of(parameterizedType): Optional.empty())
-          .filter(t -> t.getRawType() == List.class)
-          .map(t -> JSONDeserializer.Collector.list(t.getActualTypeArguments()[0])));
+      deserializer.addTypeMatcher(listTypeMatcher());
       var bean = deserializer.parseJSON("""
         {
           "values": [ 12, "foo", 45.2 ]
@@ -371,7 +361,7 @@ public class JSONDeserializerTest {
     @Test @Tag("Q5")
     public void parseJSONWithAUserDefinedCollector() {
       var deserializer = new JSONDeserializer();
-      deserializer.addTypeMatcher(type -> Optional.of(new Collector<>(
+      deserializer.addTypeMatcher(type -> Optional.of(new JSONDeserializer.Collector<>(
           key -> String.class,
           () -> new StringJoiner(", ", "{", "}"),
           (joiner, key, value) -> joiner.add(key + "=" + value.toString()),
@@ -423,10 +413,7 @@ public class JSONDeserializerTest {
       }.getClass().getDeclaredField("exemplar").getGenericType();
 
       var deserializer = new JSONDeserializer();
-      deserializer.addTypeMatcher(type -> Optional.of(type)
-          .flatMap(t -> t instanceof ParameterizedType parameterizedType? Optional.of(parameterizedType): Optional.empty())
-          .filter(t -> t.getRawType() == List.class)
-          .map(t -> JSONDeserializer.Collector.list(t.getActualTypeArguments()[0])));
+      deserializer.addTypeMatcher(listTypeMatcher());
       var string = deserializer.parseJSON("""
         [
           { "owner": "Bob", "color": "red" },
@@ -448,13 +435,17 @@ public class JSONDeserializerTest {
   @Nested
   public class Q6 {
 
+    private static JSONDeserializer.TypeMatcher listTypeMatcher() {
+      return type -> Optional.of(type)
+          .flatMap(t -> t instanceof ParameterizedType parameterizedType? Optional.of(parameterizedType): Optional.empty())
+          .filter(t -> t.getRawType() == List.class)
+          .map(t -> JSONDeserializer.Collector.list(t.getActualTypeArguments()[0]));
+    }
+
     @Test @Tag("Q6")
     public void parseJSONTypeReference() {
       var deserializer = new JSONDeserializer();
-      deserializer.addTypeMatcher(type -> Optional.of(type)
-          .flatMap(t -> t instanceof ParameterizedType parameterizedType? Optional.of(parameterizedType): Optional.empty())
-          .filter(t -> t.getRawType() == List.class)
-          .map(t -> JSONDeserializer.Collector.list(t.getActualTypeArguments()[0])));
+      deserializer.addTypeMatcher(listTypeMatcher());
       @SuppressWarnings("unchecked")
       var list = (List<Integer>) deserializer.parseJSON("""
           [
@@ -478,6 +469,14 @@ public class JSONDeserializerTest {
 
   @Nested
   public class Q7 {
+
+    private static JSONDeserializer.TypeMatcher listTypeMatcher() {
+      return type -> Optional.of(type)
+          .flatMap(t -> t instanceof ParameterizedType parameterizedType? Optional.of(parameterizedType): Optional.empty())
+          .filter(t -> t.getRawType() == List.class)
+          .map(t -> JSONDeserializer.Collector.list(t.getActualTypeArguments()[0]));
+    }
+
     public record Person(String name, int age) { }
 
     @Test @Tag("Q7")
@@ -513,10 +512,7 @@ public class JSONDeserializerTest {
     @Test @Tag("Q7")
     public void parseJSONWithABeanAndAList() {
       var deserializer = new JSONDeserializer();
-      deserializer.addTypeMatcher(type -> Optional.of(type)
-            .flatMap(t -> t instanceof ParameterizedType parameterizedType? Optional.of(parameterizedType): Optional.empty())
-            .filter(t -> t.getRawType() == List.class)
-            .map(t -> JSONDeserializer.Collector.list(t.getActualTypeArguments()[0])));
+      deserializer.addTypeMatcher(listTypeMatcher());
       deserializer.addTypeMatcher(type -> Optional.of(Utils.erase(type)).filter(Class::isRecord).map(JSONDeserializer.Collector::record));
       var bean = deserializer.parseJSON("""
         {
