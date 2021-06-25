@@ -387,7 +387,7 @@ public class JSONDeserializerTest {
     }
 
     @SuppressWarnings("unused")
-    public final static class Car {
+    public static final class Car {
       private String owner;
       private String color;
 
