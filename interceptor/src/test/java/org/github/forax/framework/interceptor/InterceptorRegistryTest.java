@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class InterceptorRegistryTest {
   @Nested
-  class Q1 {
+  public class Q1 {
 
     @Retention(RUNTIME)
     @Target(METHOD)
@@ -82,7 +82,7 @@ public class InterceptorRegistryTest {
 
 
   @Nested
-  class Q2 {
+  public class Q2 {
 
     @Retention(RUNTIME)
     @Target(METHOD)
@@ -131,7 +131,7 @@ public class InterceptorRegistryTest {
 
 
   @Nested
-  class Q3 {
+  public class Q3 {
 
     @Retention(RUNTIME)
     @Target(METHOD)
@@ -386,7 +386,7 @@ public class InterceptorRegistryTest {
 
 
   @Nested
-  class Q4 {
+  public class Q4 {
 
     @Retention(RUNTIME)
     @interface Intercepted {}
@@ -456,7 +456,7 @@ public class InterceptorRegistryTest {
 
 
   @Nested
-  class Q7 {
+  public class Q7 {
 
     @Retention(RUNTIME)
     @interface Example1 {}

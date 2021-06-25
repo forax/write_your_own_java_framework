@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 @SuppressWarnings("unused")
 public class InjectorRegistryTest {
   @Nested
-  class Q1 {
+  public class Q1 {
     @Test @Tag("Q1")
     public void getRegistry() {
       var registry = new InjectorRegistry();
@@ -40,7 +40,7 @@ public class InjectorRegistryTest {
 
 
   @Nested
-  class Q2 {
+  public class Q2 {
 
     @Test @Tag("Q2")
     public void registerInstanceAndGetInstanceString() {
@@ -96,7 +96,7 @@ public class InjectorRegistryTest {
 
 
   @Nested
-  class Q3 {
+  public class Q3 {
     @Test @Tag("Q3")
     public void registerInstanceAndGetInstancePreciseSignature() {
       InjectorRegistry registry = new InjectorRegistry();
@@ -113,7 +113,7 @@ public class InjectorRegistryTest {
 
 
   @Nested
-  class Q4 {
+  public class Q4 {
     @Test @Tag("Q4")
     public void registerProvider() {
       record Bar() {}
@@ -158,7 +158,7 @@ public class InjectorRegistryTest {
 
 
   @Nested
-  class Q5 {
+  public class Q5 {
     @Test @Tag("Q5")
     public void findSettersOneInjectMethod() {
       class A {
@@ -332,7 +332,7 @@ public class InjectorRegistryTest {
 
 
   @Nested
-  class Q7 {
+  public class Q7 {
     @Test @Tag("Q7")
     public void registerProviderClassWithAnEmptyClass() {
       record A() {

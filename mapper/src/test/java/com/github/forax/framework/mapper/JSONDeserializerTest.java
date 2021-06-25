@@ -142,7 +142,9 @@ public class JSONDeserializerTest {
           () -> assertThrows(NullPointerException.class, () -> deserializer.parseJSON("", (Class<?>) null))
       );
     }
-  }
+
+  }  // end of Q1
+
 
   @Nested
   public class Q2 {
@@ -176,7 +178,9 @@ public class JSONDeserializerTest {
         """, Person.class);
       assertEquals("75001", person.address.zipCode);
     }
-  }
+
+  }  // end of Q2
+
 
   @Nested
   public class Q3 {
@@ -221,7 +225,9 @@ public class JSONDeserializerTest {
     public void collectorBeanPreconditions() {
       assertThrows(NullPointerException.class, () -> Collector.bean(null));
     }
-  }
+
+  }  // end of Q3
+
 
   @Nested class Q4 {
     @Test @Tag("Q4")
@@ -232,7 +238,9 @@ public class JSONDeserializerTest {
           () -> assertThrows(NullPointerException.class, () -> deserializer.parseJSON("", (Type) null))
       );
     }
-  }
+
+  }  // end of Q4
+
 
   @Nested
   public class Q5 {
@@ -334,7 +342,9 @@ public class JSONDeserializerTest {
       var deserializer = new JSONDeserializer();
       assertThrows(NullPointerException.class, () -> deserializer.addTypeMatcher(null));
     }
-  }
+
+  }  // end of Q5
+
 
   @Nested
   public class Q6 {
@@ -363,7 +373,9 @@ public class JSONDeserializerTest {
           () -> assertThrows(NullPointerException.class, () -> deserializer.parseJSON("", (TypeReference<?>) null))
       );
     }
-  }
+
+  }  // end of Q6
+
 
   @Nested
   public class Q7 {
@@ -414,5 +426,6 @@ public class JSONDeserializerTest {
         """, IntArrayBean.class);
       assertEquals(List.of(12, "foo", 45.2), bean.values);
     }
-  }
+
+  }  // end of Q7
 }

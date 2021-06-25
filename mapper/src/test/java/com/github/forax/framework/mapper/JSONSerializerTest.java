@@ -1,6 +1,7 @@
 package com.github.forax.framework.mapper;
 
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Timestamp;
@@ -18,8 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class JSONSerializerTest {
 
   @Nested
-  class Q1 {
-    @Test
+  public class Q1 {
+    @Test @Tag("Q1")
     public void toJSONPrimitive() {
       var serializer = new JSONSerializer();
       assertAll(
@@ -31,7 +32,8 @@ public class JSONSerializerTest {
           () -> assertEquals("\"foo\"", serializer.toJSON("foo"))
       );
     }
-  }
+  }  // end of Q1
+
 
   public static class Car {
     private final String owner;
@@ -64,8 +66,8 @@ public class JSONSerializerTest {
   }
 
   @Nested
-  class Q2 {
-    @Test
+  public class Q2 {
+    @Test @Tag("Q2")
     public void toJSONWithASimpleClass() {
       var serializer = new JSONSerializer();
       var car = new Car("Marty");
@@ -75,7 +77,7 @@ public class JSONSerializerTest {
           """, json);
     }
 
-    @Test
+    @Test @Tag("Q2")
     public void toJSONWithAClass() {
       var serializer = new JSONSerializer();
       var alien = new Alien("Elvis", "Proxima Centauri");
@@ -92,7 +94,7 @@ public class JSONSerializerTest {
       );
     }
 
-    @Test
+    @Test @Tag("Q2")
     public void toJSONEmptyClass() {
       class Empty { }
       var serializer = new JSONSerializer();
@@ -100,7 +102,9 @@ public class JSONSerializerTest {
       var json = serializer.toJSON(empty);
       assertEquals("{}", json);
     }
-  }
+
+  } // end of Q2
+
 
   public static final class Person {
     private final String firstName;
@@ -136,15 +140,15 @@ public class JSONSerializerTest {
 
 
   @Nested
-  class Q5 {
-    @Test
+  public class Q5 {
+    @Test @Tag("Q5")
     public void toJSONWithConfigure() {
       var serializer = new JSONSerializer();
       serializer.configure(LocalDateTime.class, time -> time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
       assertEquals("2021-06-16T20:53:17", serializer.toJSON(LocalDateTime.of(2021, 6, 16, 20, 53, 17)));
     }
 
-    @Test
+    @Test @Tag("Q5")
     public void toJSONBeanWithConfigure() {
       var serializer = new JSONSerializer();
       serializer.configure(LocalDateTime.class, time -> time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
@@ -155,14 +159,14 @@ public class JSONSerializerTest {
       """, json);
     }
 
-    @Test
+    @Test @Tag("Q5")
     public void configureTwice() {
       var serializer = new JSONSerializer();
       serializer.configure(LocalTime.class, __ -> "foo");
       assertThrows(IllegalStateException.class, () -> serializer.configure(LocalTime.class, __ -> "bar"));
     }
 
-    @Test
+    @Test @Tag("Q5")
     public void configurePreconditions() {
       var serializer = new JSONSerializer();
       assertAll(
@@ -170,11 +174,12 @@ public class JSONSerializerTest {
           () -> assertThrows(NullPointerException.class, () -> serializer.configure(Timestamp.class, null))
       );
     }
-  }
+
+  } // end of Q5
 
   @Nested
-  class Q6 {
-    @Test
+  public class Q6 {
+    @Test @Tag("Q6")
     public void toJSONWithJSONProperty() {
       var serializer = new JSONSerializer();
       var person = new Person("Bob", "Hunky");
@@ -184,7 +189,9 @@ public class JSONSerializerTest {
           """,
           json);
     }
-  }
+
+  } // end of Q6
+
 
   public static class AddressInfo {
     private boolean international;
@@ -197,8 +204,8 @@ public class JSONSerializerTest {
   public record PersonInfo(@JSONProperty("birth-day") MonthDay birthday, AddressInfo address) { }
 
   @Nested
-  class Q7 {
-    @Test
+  public class Q7 {
+    @Test @Tag("Q7")
     public void toJSONWithARecord() {
       record Person(String name, int age) { }
       var serializer = new JSONSerializer();
@@ -210,7 +217,7 @@ public class JSONSerializerTest {
           json);
     }
 
-    @Test
+    @Test @Tag("Q7")
     public void toJSONEmptyRecord() {
       record Empty() { }
       var serializer = new JSONSerializer();
@@ -219,7 +226,7 @@ public class JSONSerializerTest {
       assertEquals("{}", json);
     }
 
-    @Test
+    @Test @Tag("Q7")
     public void toJSONRecursive() {
       record Address(String street) { }
       record Person(String name, Address address) { }
@@ -232,7 +239,7 @@ public class JSONSerializerTest {
           json);
     }
 
-    @Test
+    @Test @Tag("Q7")
     public void toJSONFullExample() {
       var serializer = new JSONSerializer();
       serializer.configure(MonthDay.class, monthDay -> serializer.toJSON(monthDay.getMonth() + "-" + monthDay.getDayOfMonth()));
@@ -243,5 +250,6 @@ public class JSONSerializerTest {
           """,
           json);
     }
-  }
+
+  }  // end of Q7
 }
