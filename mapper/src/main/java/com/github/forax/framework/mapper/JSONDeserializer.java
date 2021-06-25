@@ -171,8 +171,8 @@ public class JSONDeserializer {
 
   private static Type findDeserializerType(Object typeReference) {
     var typeReferenceType = Arrays.stream(typeReference.getClass().getGenericInterfaces())
-        .flatMap(superInterface -> superInterface instanceof ParameterizedType parameterizedType? Stream.of(parameterizedType): Stream.empty())
-        .filter(superInterface -> superInterface.getRawType() == TypeReference.class)
+        .flatMap(t -> t instanceof ParameterizedType parameterizedType? Stream.of(parameterizedType): Stream.empty())
+        .filter(t -> t.getRawType() == TypeReference.class)
         .findFirst().orElseThrow(() -> new IllegalArgumentException("invalid TypeReference " + typeReference));
     return typeReferenceType.getActualTypeArguments()[0];
   }
