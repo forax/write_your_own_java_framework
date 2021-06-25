@@ -25,7 +25,7 @@ public final class JSONSerializer {
             var propertyAnnotation = getter.getAnnotation(JSONProperty.class);
             var propertyName = propertyAnnotation == null? property.getName(): propertyAnnotation.value();
             var key = "\"" + propertyName + "\": ";
-            return (serializer, o) -> key + serializer.toJSON(Utils.invoke(o, getter));
+            return (serializer, o) -> key + serializer.toJSON(Utils.invokeMethod(o, getter));
           })
           .toList();
       return (serializer, object) -> generators.stream()

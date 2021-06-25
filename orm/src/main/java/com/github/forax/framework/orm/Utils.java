@@ -28,7 +28,7 @@ final class Utils {
     }
   }
 
-  public static Object invoke(Object bean, Method method, Object... args) {
+  public static Object invokeMethod(Object bean, Method method, Object... args) {
     try {
       return method.invoke(bean, args);
     } catch (IllegalArgumentException e) {

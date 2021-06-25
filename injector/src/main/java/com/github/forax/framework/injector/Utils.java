@@ -21,7 +21,7 @@ final class Utils {
     }
   }
 
-  static void invokeMethod(Method method, Object instance, Object... args) {
+  public static void invokeMethod(Object instance, Method method, Object... args) {
     try {
       method.invoke(instance, args);
     } catch (IllegalArgumentException e) {
@@ -40,7 +40,7 @@ final class Utils {
     }
   }
 
-  static Object invokeConstructor(Constructor<?> constructor, Object... args) {
+  public static Object invokeConstructor(Constructor<?> constructor, Object... args) {
     try {
       return constructor.newInstance(args);
     } catch (IllegalArgumentException e) {

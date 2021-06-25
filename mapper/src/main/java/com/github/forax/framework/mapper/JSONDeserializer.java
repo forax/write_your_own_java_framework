@@ -52,7 +52,7 @@ public class JSONDeserializer {
       return new Collector<>(
           key -> findProperty(propertyMap, key, beanClass).getPropertyType(),
           () -> Utils.newInstance(constructor),
-          (bean, key, value) -> Utils.invoke(bean, findProperty(propertyMap, key, beanClass).getWriteMethod(), value),
+          (bean, key, value) -> Utils.invokeMethod(bean, findProperty(propertyMap, key, beanClass).getWriteMethod(), value),
           bean -> bean);
     }
 

@@ -23,7 +23,7 @@ public class UtilsTest {
 
     var method = A.class.getMethod("setColor", String.class);
     var a = new A();
-    Utils.invokeMethod(method, a, "green");
+    Utils.invokeMethod(a, method, "green");
     assertEquals("green", a.color);
   }
   @Test
@@ -36,7 +36,7 @@ public class UtilsTest {
 
     var method = A.class.getMethod("setInteger", Integer.class);
     var a = new A();
-    assertThrows(AssertionError.class, () -> Utils.invokeMethod(method, a, "notAnInteger"));
+    assertThrows(AssertionError.class, () -> Utils.invokeMethod(a, method, "notAnInteger"));
   }
   @Test
   public void invokeSetterThrowUncheckedException() throws NoSuchMethodException {
@@ -48,7 +48,7 @@ public class UtilsTest {
     }
 
     var method = A.class.getMethod("setFoo", Foo.class);
-    assertThrows(IllegalArgumentException.class, () -> Utils.invokeMethod(method, new A(), new Foo() {}));
+    assertThrows(IllegalArgumentException.class, () -> Utils.invokeMethod(new A(), method, new Foo() {}));
   }
   @Test
   public void invokeSetterCheckedException() throws NoSuchMethodException {
@@ -59,7 +59,7 @@ public class UtilsTest {
     }
 
     var method = A.class.getMethod("setString", String.class);
-    assertThrows(UndeclaredThrowableException.class, () -> Utils.invokeMethod(method, new A(), "hello"));
+    assertThrows(UndeclaredThrowableException.class, () -> Utils.invokeMethod(new A(), method, "hello"));
   }
   @Test
   public void invokeSetterCheckedError() throws NoSuchMethodException {
@@ -70,7 +70,7 @@ public class UtilsTest {
     }
 
     var method = A.class.getMethod("setString", String.class);
-    assertThrows(IOError.class, () -> Utils.invokeMethod(method, new A(), "hello"));
+    assertThrows(IOError.class, () -> Utils.invokeMethod(new A(), method, "hello"));
   }
 
 

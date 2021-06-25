@@ -105,7 +105,7 @@ public final class ORM {
         continue;
       }
       Object value = resultSet.getObject(propertyName /*, property.getPropertyType()*/);
-      Utils.invoke(instance, property.getWriteMethod(), value);
+      Utils.invokeMethod(instance, property.getWriteMethod(), value);
     }
     return instance;
   }
@@ -124,7 +124,7 @@ public final class ORM {
     var array = new Object[properties.length];
     for (int i = 0; i < properties.length; i++) {
       var property = properties[i];
-      array[i] = Utils.invoke(bean, property.getReadMethod());
+      array[i] = Utils.invokeMethod(bean, property.getReadMethod());
     }
     return newEntityProxy(beanType, array);
   }
@@ -159,7 +159,7 @@ public final class ORM {
         if (property.getName().equals("class")) {
           continue;
         }
-        statement.setObject(index++, Utils.invoke(bean, property.getReadMethod()));
+        statement.setObject(index++, Utils.invokeMethod(bean, property.getReadMethod()));
       }
       statement.executeUpdate();
       if (beanType.isInterface() && trackingInvocationHandler == null) {
@@ -168,7 +168,7 @@ public final class ORM {
       try(var resultSet = statement.getGeneratedKeys()) {
         if (resultSet.next()) {
           var key = resultSet.getObject( 1);
-          Utils.invoke(result, idProperty.getWriteMethod(), key);
+          Utils.invokeMethod(result, idProperty.getWriteMethod(), key);
         }
       }
     }
