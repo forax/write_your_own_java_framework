@@ -11,6 +11,12 @@ import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * A Toy JSON parser that do not recognized correctly, unicode characters, escaped strings
+ * and i'm sure many more features.
+ *
+ * @see #parse(String, JSONVisitor)
+ */
 class ToyJSONParser {
   private ToyJSONParser() {
     throw new AssertionError();
@@ -38,7 +44,7 @@ class ToyJSONParser {
       this.regex = regex;
     }
 
-    private final static Kind[] VALUES = values();
+    private static final Kind[] VALUES = values();
   }
 
   private record Token(Kind kind, String text, int location) {
@@ -54,7 +60,7 @@ class ToyJSONParser {
     }
 
     public IllegalStateException error(Kind... expectedKinds) {
-      return new IllegalStateException("expect " + Arrays.stream(expectedKinds).map(Kind::name).collect(joining(", ")) + " but recognized " + this.kind + " at " + location);
+      return new IllegalStateException("expect " + Arrays.stream(expectedKinds).map(Kind::name).collect(joining(", ")) + " but recognized " + kind + " at " + location);
     }
   }
 
@@ -73,16 +79,60 @@ class ToyJSONParser {
     }
   }
 
+  /**
+   * Methods called when a JSON text is parsed.
+   * @see #parse(String, JSONVisitor)
+   */
   public interface JSONVisitor {
+    /**
+     * Called during the parsing or the content of an object or an array.
+     *
+     * @param key the key of the value if inside an object, {@code null} otherwise.
+     * @param value the value
+     */
     void value(String key, Object value);
+
+    /**
+     * Called during the parsing at the beginning of an object.
+     * @param key the key of the value if inside an object, {@code null} otherwise.
+     *
+     * @see #endObject(String)
+     */
     void startObject(String key);
+
+    /**
+     * Called during the parsing at the end of an object.
+     * @param key the key of the value if inside an object, {@code null} otherwise.
+     *
+     * @see #startObject(String)
+     */
     void endObject(String key);
+
+    /**
+     * Called during the parsing at the beginning of an array.
+     * @param key the key of the value if inside an object, {@code null} otherwise.
+     *
+     * @see #endArray(String)
+     */
     void startArray(String key);
+
+    /**
+     * Called during the parsing at the end of an array.
+     * @param key the key of the value if inside an object, {@code null} otherwise.
+     *
+     * @see #startArray(String)
+     */
     void endArray(String key);
   }
 
   private static final Pattern PATTERN = compile(Arrays.stream(Kind.VALUES).map(k -> k.regex).collect(joining("|")));
 
+  /**
+   * Parse a JSON text and calls the visitor methods when an array, an object or a value is parsed.
+   *
+   * @param input a JSON text
+   * @param visitor the visitor to call when parsing the JSON text
+   */
   public static void parse(String input, JSONVisitor visitor) {
     var lexer = new Lexer(PATTERN.matcher(input));
     try {
