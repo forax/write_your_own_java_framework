@@ -3,7 +3,6 @@
 ### Q1
 
 ```java
-  // Q1
   public String toJSON(Object o) {
     // TODO use a switch on types when moving to Java 17
     if (o == null) {
