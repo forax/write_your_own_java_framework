@@ -446,6 +446,7 @@ void method(Class<?> type) {
   Type[]  genericInterfaces = type.getGenericInterfaces();
   for(Type genericInterface: genericInterfaces) {
     switch(genericInterface) {
+      case Class<?> clazz -> ...                      // e.e. String.class 
       case ParameterizedType parameterizedType -> {   // e.g. List<String>
         Class<?> rawType = (Class<?>) parameterizedType.getRawType();
         Type[] typeArguments = parameterizedType.getActualTypeArguments();
