@@ -426,7 +426,7 @@ void method(Constructor<?> constructor) {
 
 ## Java Compiler generics attributes
 
-Parametrized types, named generics in Java, are verified at compile time but disappear at runtime.
+Parametrized types, named generics in Java, are verified at compile time but disappear at runtime (_erasure_).
 In order to allow separate compilation ; a library, and an application compiled independently ;
 the compiler insert a special attribute into the classfile.
 
@@ -435,11 +435,15 @@ on the class, method, field, etc.
 For example, the method [Class.getGenericInterfaces()](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/Class.html#getGenericInterfaces())
 returns the interfaces of a class as an array of [Type](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/reflect/Type.html).
 
-A `Type` can be
+A `java.lang.reflect.Type` can be
 - a [parameterized type](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/reflect/ParameterizedType.html)
 - a [generic array](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/reflect/GenericArrayType.html)
 - a [type variable](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/reflect/TypeVariable.html)
 - a [wildcard](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/reflect/WildcardType.html)
+
+A `java.lang.Class` represents a class or interface at runtime so a `Class` like `List`
+does not have a type argument (`List` not `List<String>`). A `Type` represents a type
+computed by the compiler, so it can be a parameterized type, with wildcards, etc.
 
 ```java
 void method(Class<?> type) {
