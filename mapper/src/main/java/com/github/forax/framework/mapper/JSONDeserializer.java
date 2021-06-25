@@ -18,19 +18,8 @@ import java.util.stream.Stream;
 import static java.util.stream.Collectors.toMap;
 
 public class JSONDeserializer {
-  /*
-  private static Type findComponentType(Type type) {
-    if (type instanceof ParameterizedType parameterizedType) {
-      var rawType = (Class<?>) parameterizedType.getRawType();
-      if (rawType == List.class) {
-        return parameterizedType.getActualTypeArguments()[0];
-      }
-    }
-    throw new IllegalStateException("can not find component type " + type);
-  }*/
-
-  public record Collector<B>(Function<String, Type> qualifier,
-                             Supplier<? super B> supplier, Appender<B> appender, Function<B, Object> finisher) {
+  public record Collector<B>(Function<? super String, ? extends Type> qualifier,
+                             Supplier<? extends B> supplier, Appender<B> appender, Function<? super B, ?> finisher) {
     public interface Appender<B> {
       void append(B builder, String key, Object value);
     }
@@ -44,13 +33,14 @@ public class JSONDeserializer {
     }
 
     public static Collector<Object> bean(Class<?> beanClass) {
+      Objects.requireNonNull(beanClass);
       var beanInfo = Utils.beanInfo(beanClass);
       var propertyMap = Arrays.stream(beanInfo.getPropertyDescriptors())
           .filter(property -> property.getWriteMethod() != null)
           .collect(toMap(PropertyDescriptor::getName, property -> property));
       var constructor = Utils.defaultConstructor(beanClass);
       return new Collector<>(
-          key -> findProperty(propertyMap, key, beanClass).getPropertyType(),
+          key -> findProperty(propertyMap, key, beanClass).getWriteMethod().getGenericParameterTypes()[0],
           () -> Utils.newInstance(constructor),
           (bean, key, value) -> Utils.invokeMethod(bean, findProperty(propertyMap, key, beanClass).getWriteMethod(), value),
           bean -> bean);
@@ -59,6 +49,11 @@ public class JSONDeserializer {
     @SuppressWarnings("unchecked")
     private Collector<Object> erase() {
       return (Collector<Object>) (Collector<?>) this;
+    }
+
+    public static Collector<List<Object>> list(Type element) {
+      Objects.requireNonNull(element);
+      return new Collector<>(__ -> element, ArrayList::new, (list, key, value) -> list.add(value), List::copyOf);
     }
 
     private static int findComponentIndex(Map<String, Integer> componentIndexMap, String key, Class<?> recordClass) {
@@ -70,21 +65,18 @@ public class JSONDeserializer {
     }
 
     public static Collector<Object[]> record(Class<?> recordClass) {
+      Objects.requireNonNull(recordClass);
       var components = recordClass.getRecordComponents();
       var componentIndexMap = IntStream.range(0, components.length)
           .boxed()
           .collect(toMap(i -> components[i].getName(), component -> component));
       var constructor = Utils.canonicalConstructor(recordClass, components);
       return new Collector<>(
-          key -> components[findComponentIndex(componentIndexMap, key, recordClass)].getType(),
+          key -> components[findComponentIndex(componentIndexMap, key, recordClass)].getGenericType(),
           () -> new Object[components.length],
           (array, key, value) -> array[findComponentIndex(componentIndexMap, key, recordClass)] = value,
           array -> Utils.newInstance(constructor, array)
       );
-    }
-
-    public static Collector<List<Object>> list(Type element) {
-      return new Collector<>(__ -> element, ArrayList::new, (list, key, value) -> list.add(value), List::copyOf);
     }
   }
 
@@ -93,9 +85,6 @@ public class JSONDeserializer {
   }
 
   private final ArrayList<TypeMatcher> typeMatchers = new ArrayList<>();
-  {
-    typeMatchers.add(type -> Optional.of(Collector.bean((Class<?>) type)));
-  }
 
   public void addTypeMatcher(TypeMatcher typeMatcher) {
     Objects.requireNonNull(typeMatcher);
@@ -110,12 +99,12 @@ public class JSONDeserializer {
         return collectorOpt.orElseThrow();
       }
     }
-    throw new IllegalStateException("no type match matches " + type.getTypeName());
+    return Collector.bean(Utils.erase(type));
      */
     return Utils.reverseList(typeMatchers).stream()
         .flatMap(typeMatcher -> typeMatcher.match(type).stream())
         .findFirst()
-        .orElseThrow(() -> new IllegalStateException("no type match matches " + type.getTypeName()));
+        .orElseGet(() -> Collector.bean(Utils.erase(type)));
   }
 
   public Object parseJSON(String text, Type type) {
@@ -146,7 +135,8 @@ public class JSONDeserializer {
         if (contexts.isEmpty()) {
           this.result = result;
         } else {
-          contexts.peek().collector.appender.append(context.data, key, result);
+          var enclosingContext = contexts.peek();
+          enclosingContext.collector.appender.append(enclosingContext.data, key, result);
         }
       }
 

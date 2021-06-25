@@ -4,9 +4,14 @@ import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.RecordComponent;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
 import java.util.AbstractList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,9 +30,9 @@ final class Utils {
     }
   }
 
-  public static Object invokeMethod(Object bean, Method method, Object... args) {
+  public static Object invokeMethod(Object instance, Method method, Object... args) {
     try {
-      return method.invoke(bean, args);
+      return method.invoke(instance, args);
     } catch (IllegalArgumentException e) {
       throw new AssertionError(e);
     } catch (IllegalAccessException e) {
@@ -85,5 +90,25 @@ final class Utils {
         return list.size();
       }
     };
+  }
+
+  public static Class<?> erase(Type type) {
+    // TODO use a switch on type here
+    if (type instanceof Class<?> clazz) {
+      return clazz;
+    }
+    if (type instanceof ParameterizedType parameterizedType) {
+      return (Class<?>) parameterizedType.getRawType();
+    }
+    if (type instanceof GenericArrayType genericArrayType) {
+      return erase(genericArrayType.getGenericComponentType()).arrayType();
+    }
+    if (type instanceof TypeVariable<?> typeVariable) {
+      return erase(typeVariable.getBounds()[0]);
+    }
+    if (type instanceof WildcardType wildcardType) {
+      return erase(wildcardType.getLowerBounds()[0]);
+    }
+    throw new AssertionError("unknown type " + type.getTypeName());
   }
 }
