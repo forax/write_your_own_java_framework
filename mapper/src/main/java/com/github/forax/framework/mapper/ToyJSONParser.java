@@ -5,13 +5,13 @@ import static java.lang.Integer.parseInt;
 import static java.util.regex.Pattern.compile;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.IntStream.rangeClosed;
-import static com.github.forax.framework.mapper.IncompleteJSONParser.Kind.*;
+import static com.github.forax.framework.mapper.ToyJSONParser.Kind.*;
 
 import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-class IncompleteJSONParser {
+class ToyJSONParser {
   enum Kind {
     NULL("(null)"),
     TRUE("(true)"),

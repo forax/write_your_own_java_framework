@@ -1,6 +1,6 @@
 package com.github.forax.framework.mapper;
 
-import com.github.forax.framework.mapper.IncompleteJSONParser.JSONVisitor;
+import com.github.forax.framework.mapper.ToyJSONParser.JSONVisitor;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayDeque;
@@ -13,7 +13,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class IncompleteJSONParserTest {
+class ToyJSONParserTest {
   private static Object asJava(String text) {
     var visitor = new JSONVisitor() {
       private Object result;
@@ -64,7 +64,7 @@ class IncompleteJSONParserTest {
         }
       }
     };
-    IncompleteJSONParser.parse(text, visitor);
+    ToyJSONParser.parse(text, visitor);
     return visitor.result;
   }
 

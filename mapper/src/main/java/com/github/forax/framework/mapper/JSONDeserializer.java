@@ -122,7 +122,7 @@ public class JSONDeserializer {
     Objects.requireNonNull(text);
     Objects.requireNonNull(type);
     record Context(Collector<Object> collector, Object data) { }
-    var visitor = new IncompleteJSONParser.JSONVisitor() {
+    var visitor = new ToyJSONParser.JSONVisitor() {
       private final ArrayDeque<Context> contexts = new ArrayDeque<>();
       private Object result;
 
@@ -167,7 +167,7 @@ public class JSONDeserializer {
         end(key);
       }
     };
-    IncompleteJSONParser.parse(text, visitor);
+    ToyJSONParser.parse(text, visitor);
     return visitor.result;
   }
 
