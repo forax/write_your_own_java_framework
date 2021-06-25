@@ -51,7 +51,7 @@ final class Utils {
     try {
       return beanType.getConstructor();
     } catch (NoSuchMethodException e) {
-      throw (NoSuchMethodError) new NoSuchMethodError("no public default constructor").initCause(e);
+      throw (NoSuchMethodError) new NoSuchMethodError("no public default constructor " + beanType.getName()).initCause(e);
     }
   }
 
@@ -59,7 +59,7 @@ final class Utils {
     try {
       return recordClass.getConstructor(Arrays.stream(components).map(RecordComponent::getType).toArray(Class[]::new));
     } catch (NoSuchMethodException e) {
-      throw (NoSuchMethodError) new NoSuchMethodError("no public canonical constructor").initCause(e);
+      throw (NoSuchMethodError) new NoSuchMethodError("no public canonical constructor " + recordClass.getName()).initCause(e);
     }
   }
 

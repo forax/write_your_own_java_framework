@@ -1,7 +1,6 @@
 package com.github.forax.framework.mapper;
 
 import com.github.forax.framework.mapper.JSONDeserializer.Collector;
-import com.github.forax.framework.mapper.JSONDeserializer.TypeReference;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -12,10 +11,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.StringJoiner;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -41,7 +42,7 @@ public class JSONDeserializerTest {
     @Test @Tag("Q1")
     public void parseJSON() {
       var deserializer = new JSONDeserializer();
-      var bean = deserializer.parseJSON("""
+      SimpleBean bean = deserializer.parseJSON("""
         {
           "name": "Bob",
           "age": 23
@@ -135,6 +136,19 @@ public class JSONDeserializerTest {
     }
 
     @Test @Tag("Q1")
+    public void parseJSONInvalidKey() {
+      var deserializer = new JSONDeserializer();
+      var exception = assertThrows(IllegalStateException.class, () -> {
+        deserializer.parseJSON("""
+        {
+          "invalidKey": "oops"
+        }
+        """, SimpleBean.class);
+      });
+      assertTrue(exception.getCause() instanceof IllegalStateException);
+    }
+
+    @Test @Tag("Q1")
     public void parseJSONClassPrecondition() {
       var deserializer = new JSONDeserializer();
       assertAll(
@@ -200,10 +214,10 @@ public class JSONDeserializerTest {
 
     @Test @Tag("Q3")
     public void collectorBean() {
-      var collector = Collector.bean(Person.class);
+      var collector = JSONDeserializer.Collector.bean(Person.class);
       var bean = collector.supplier().get();
-      collector.appender().append(bean, "name", "Bob");
-      collector.appender().append(bean, "age", 29);
+      collector.populater().populate(bean, "name", "Bob");
+      collector.populater().populate(bean, "age", 29);
       var person = (Person) collector.finisher().apply(bean);
 
       assertAll(
@@ -214,7 +228,7 @@ public class JSONDeserializerTest {
 
     @Test @Tag("Q3")
     public void collectorBeanQualifierType() {
-      var collector = Collector.bean(Person.class);
+      var collector = JSONDeserializer.Collector.bean(Person.class);
       assertAll(
           () -> assertEquals(String.class, collector.qualifier().apply("name")),
           () -> assertEquals(int.class, collector.qualifier().apply("age"))
@@ -223,7 +237,7 @@ public class JSONDeserializerTest {
 
     @Test @Tag("Q3")
     public void collectorBeanPreconditions() {
-      assertThrows(NullPointerException.class, () -> Collector.bean(null));
+      assertThrows(NullPointerException.class, () -> JSONDeserializer.Collector.bean(null));
     }
 
   }  // end of Q3
@@ -239,6 +253,22 @@ public class JSONDeserializerTest {
       );
     }
 
+    @SuppressWarnings("unused")
+    public static class PreciseTypeBean {
+      public void setFoo(List<String> list) {}
+    }
+
+    @Test @Tag("Q4")
+    public void collectorBeanQualifierPreciseType() {
+      var collector = JSONDeserializer.Collector.bean(PreciseTypeBean.class);
+      var type = collector.qualifier().apply("foo");
+      assertAll(
+          () -> assertNotEquals(List.class, type),
+          () -> assertEquals(List.class, ((ParameterizedType) type).getRawType()),
+          () -> assertEquals(String.class, ((ParameterizedType) type).getActualTypeArguments()[0])
+      );
+    }
+
   }  // end of Q4
 
 
@@ -246,10 +276,10 @@ public class JSONDeserializerTest {
   public class Q5 {
     @Test @Tag("Q5")
     public void collectorListOfStrings() {
-      var collector = Collector.list(String.class);
+      var collector = JSONDeserializer.Collector.list(String.class);
       var list = collector.supplier().get();
-      collector.appender().append(list, null, "Bob");
-      collector.appender().append(list, null, "Ana");
+      collector.populater().populate(list, null, "Bob");
+      collector.populater().populate(list, null, "Ana");
       @SuppressWarnings("unchecked")
       var unmodifiableList = (List<String>) (List<?>) collector.finisher().apply(list);
 
@@ -262,10 +292,10 @@ public class JSONDeserializerTest {
 
     @Test @Tag("Q5")
     public void collectorListOfIntegers() {
-      var collector = Collector.list(Integer.class);
+      var collector = JSONDeserializer.Collector.list(Integer.class);
       var list = collector.supplier().get();
-      collector.appender().append(list, null, 42);
-      collector.appender().append(list, null, 856);
+      collector.populater().populate(list, null, 42);
+      collector.populater().populate(list, null, 856);
       @SuppressWarnings("unchecked")
       var unmodifiableList = (List<Integer>) (List<?>) collector.finisher().apply(list);
 
@@ -278,13 +308,13 @@ public class JSONDeserializerTest {
 
     @Test @Tag("Q5")
     public void collectorListQualifierType() {
-      var collector = Collector.list(Integer.class);
+      var collector = JSONDeserializer.Collector.list(Integer.class);
       assertEquals(Integer.class, collector.qualifier().apply(null));
     }
 
     @Test @Tag("Q5")
     public void collectorListPreconditions() {
-      assertThrows(NullPointerException.class, () -> Collector.list(null));
+      assertThrows(NullPointerException.class, () -> JSONDeserializer.Collector.list(null));
     }
 
     public static class IntArrayBean {
@@ -299,20 +329,20 @@ public class JSONDeserializerTest {
     public void parseJSONWithAList() throws NoSuchMethodException {
       var listOfIntegers = IntArrayBean.class.getMethod("setValues", List.class).getGenericParameterTypes()[0];
       var deserializer = new JSONDeserializer();
-      /*
+
       deserializer.addTypeMatcher(type -> {
         if (type instanceof ParameterizedType parameterizedType) {
           if (parameterizedType.getRawType() == List.class) {
-            return Optional.of(Collector.list(parameterizedType.getActualTypeArguments()[0]));
+            return Optional.of(JSONDeserializer.Collector.list(parameterizedType.getActualTypeArguments()[0]));
           }
         }
         return Optional.empty();
       });
-       */
-      deserializer.addTypeMatcher(type -> Optional.of(type)
-          .flatMap(t -> t instanceof ParameterizedType parameterizedType? Optional.of(parameterizedType): Optional.empty())
-          .filter(t -> t.getRawType() == List.class)
-          .map(t -> Collector.list(t.getActualTypeArguments()[0])));
+
+//      deserializer.addTypeMatcher(type -> Optional.of(type)
+//          .flatMap(t -> t instanceof ParameterizedType parameterizedType? Optional.of(parameterizedType): Optional.empty())
+//          .filter(t -> t.getRawType() == List.class)
+//          .map(t -> JSONDeserializer.Collector.list(t.getActualTypeArguments()[0])));
       @SuppressWarnings("unchecked")
       var list = (List<Integer>) deserializer.parseJSON("""
         [
@@ -328,13 +358,31 @@ public class JSONDeserializerTest {
       deserializer.addTypeMatcher(type -> Optional.of(type)
           .flatMap(t -> t instanceof ParameterizedType parameterizedType? Optional.of(parameterizedType): Optional.empty())
           .filter(t -> t.getRawType() == List.class)
-          .map(t -> Collector.list(t.getActualTypeArguments()[0])));
+          .map(t -> JSONDeserializer.Collector.list(t.getActualTypeArguments()[0])));
       var bean = deserializer.parseJSON("""
         {
           "values": [ 12, "foo", 45.2 ]
         }
         """, IntArrayBean.class);
       assertEquals(List.of(12, "foo", 45.2), bean.values);
+    }
+
+    @Test @Tag("Q5")
+    public void parseJSONWithAUserDefinedCollector() {
+      var deserializer = new JSONDeserializer();
+      deserializer.addTypeMatcher(type -> Optional.of(new Collector<>(
+          key -> String.class,
+          () -> new StringJoiner(", ", "{", "}"),
+          (joiner, key, value) -> joiner.add(key + "=" + value.toString()),
+          StringJoiner::toString
+      )));
+      var string = deserializer.parseJSON("""
+        {
+          "foo": 3,
+          "bar": "hello"
+        }
+        """, String.class);
+      assertEquals("{foo=3, bar=hello}", string);
     }
 
     @Test @Tag("Q5")
@@ -355,13 +403,13 @@ public class JSONDeserializerTest {
       deserializer.addTypeMatcher(type -> Optional.of(type)
           .flatMap(t -> t instanceof ParameterizedType parameterizedType? Optional.of(parameterizedType): Optional.empty())
           .filter(t -> t.getRawType() == List.class)
-          .map(t -> Collector.list(t.getActualTypeArguments()[0])));
+          .map(t -> JSONDeserializer.Collector.list(t.getActualTypeArguments()[0])));
       @SuppressWarnings("unchecked")
       var list = (List<Integer>) deserializer.parseJSON("""
           [
             1, 5, 78, 4
           ]
-          """, new TypeReference<List<Integer>>() {});
+          """, new JSONDeserializer.TypeReference<List<Integer>>() {});
       assertEquals(List.of(1, 5, 78, 4), list);
     }
 
@@ -369,8 +417,8 @@ public class JSONDeserializerTest {
     public void parseJSONTypeReferencePrecondition() {
       var deserializer = new JSONDeserializer();
       assertAll(
-          () -> assertThrows(NullPointerException.class, () -> deserializer.parseJSON(null, new TypeReference<String>() {})),
-          () -> assertThrows(NullPointerException.class, () -> deserializer.parseJSON("", (TypeReference<?>) null))
+          () -> assertThrows(NullPointerException.class, () -> deserializer.parseJSON(null, new JSONDeserializer.TypeReference<String>() {})),
+          () -> assertThrows(NullPointerException.class, () -> deserializer.parseJSON("", (JSONDeserializer.TypeReference<?>) null))
       );
     }
 
@@ -383,10 +431,10 @@ public class JSONDeserializerTest {
 
     @Test @Tag("Q7")
     public void collectorRecord() {
-      var collector = Collector.record(Person.class);
+      var collector = JSONDeserializer.Collector.record(Person.class);
       var array = collector.supplier().get();
-      collector.appender().append(array, "name", "Bob");
-      collector.appender().append(array, "age", 29);
+      collector.populater().populate(array, "name", "Bob");
+      collector.populater().populate(array, "age", 29);
       var person = (Person) collector.finisher().apply(array);
 
       assertAll(
@@ -397,7 +445,7 @@ public class JSONDeserializerTest {
 
     @Test @Tag("Q7")
     public void collectorRecordQualifierType() {
-      var collector = Collector.record(Person.class);
+      var collector = JSONDeserializer.Collector.record(Person.class);
       assertAll(
           () -> assertEquals(String.class, collector.qualifier().apply("name")),
           () -> assertEquals(int.class, collector.qualifier().apply("age"))
@@ -406,7 +454,7 @@ public class JSONDeserializerTest {
 
     @Test @Tag("Q7")
     public void collectorRecordPreconditions() {
-      assertThrows(NullPointerException.class, () -> Collector.record(null));
+      assertThrows(NullPointerException.class, () -> JSONDeserializer.Collector.record(null));
     }
 
     public record IntArrayBean(List<Integer> values) { }
@@ -417,8 +465,8 @@ public class JSONDeserializerTest {
       deserializer.addTypeMatcher(type -> Optional.of(type)
             .flatMap(t -> t instanceof ParameterizedType parameterizedType? Optional.of(parameterizedType): Optional.empty())
             .filter(t -> t.getRawType() == List.class)
-            .map(t -> Collector.list(t.getActualTypeArguments()[0])));
-      deserializer.addTypeMatcher(type -> Optional.of(Utils.erase(type)).filter(Class::isRecord).map(Collector::record));
+            .map(t -> JSONDeserializer.Collector.list(t.getActualTypeArguments()[0])));
+      deserializer.addTypeMatcher(type -> Optional.of(Utils.erase(type)).filter(Class::isRecord).map(JSONDeserializer.Collector::record));
       var bean = deserializer.parseJSON("""
         {
           "values": [ 12, "foo", 45.2 ]

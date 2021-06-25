@@ -19,9 +19,16 @@ import static java.util.stream.Collectors.toMap;
 
 public class JSONDeserializer {
   public record Collector<B>(Function<? super String, ? extends Type> qualifier,
-                             Supplier<? extends B> supplier, Appender<B> appender, Function<? super B, ?> finisher) {
-    public interface Appender<B> {
-      void append(B builder, String key, Object value);
+                             Supplier<? extends B> supplier, Populater<B> populater, Function<? super B, ?> finisher) {
+    public interface Populater<B> {
+      void populate(B builder, String key, Object value);
+    }
+
+    public Collector {
+      Objects.requireNonNull(qualifier);
+      Objects.requireNonNull(supplier);
+      Objects.requireNonNull(populater);
+      Objects.requireNonNull(finisher);
     }
 
     private static PropertyDescriptor findProperty(Map<String, PropertyDescriptor> propertyMap, String key, Class<?> beanClass) {
@@ -36,18 +43,18 @@ public class JSONDeserializer {
       Objects.requireNonNull(beanClass);
       var beanInfo = Utils.beanInfo(beanClass);
       var propertyMap = Arrays.stream(beanInfo.getPropertyDescriptors())
-          .filter(property -> property.getWriteMethod() != null)
           .collect(toMap(PropertyDescriptor::getName, property -> property));
       var constructor = Utils.defaultConstructor(beanClass);
       return new Collector<>(
           key -> findProperty(propertyMap, key, beanClass).getWriteMethod().getGenericParameterTypes()[0],
           () -> Utils.newInstance(constructor),
           (bean, key, value) -> Utils.invokeMethod(bean, findProperty(propertyMap, key, beanClass).getWriteMethod(), value),
-          bean -> bean);
+          bean -> bean
+      );
     }
 
     @SuppressWarnings("unchecked")
-    private Collector<Object> erase() {
+    private Collector<Object> raw() {
       return (Collector<Object>) (Collector<?>) this;
     }
 
@@ -80,6 +87,7 @@ public class JSONDeserializer {
     }
   }
 
+
   public interface TypeMatcher {
     Optional<Collector<?>> match(Type type);
   }
@@ -92,41 +100,41 @@ public class JSONDeserializer {
   }
 
   private Collector<?> findCollector(Type type) {
-    /*
-    for(var typeMatcher: Utils.reverseList(typeMatchers)) {
-      var collectorOpt = typeMatcher.match(type);
-      if (collectorOpt.isPresent()) {
-        return collectorOpt.orElseThrow();
-      }
-    }
-    return Collector.bean(Utils.erase(type));
-     */
     return Utils.reverseList(typeMatchers).stream()
         .flatMap(typeMatcher -> typeMatcher.match(type).stream())
         .findFirst()
         .orElseGet(() -> Collector.bean(Utils.erase(type)));
   }
 
+
+  // Q4
+  public <T> T parseJSON(String text, Class<T> beanClass) {
+    return beanClass.cast(parseJSON(text, (Type) beanClass));
+  }
+
   public Object parseJSON(String text, Type type) {
     Objects.requireNonNull(text);
     Objects.requireNonNull(type);
-    record Context(Collector<Object> collector, Object data) { }
     var visitor = new ToyJSONParser.JSONVisitor() {
+      record Context(Collector<Object> collector, Object data) {}
+
       private final ArrayDeque<Context> contexts = new ArrayDeque<>();
       private Object result;
 
+
       @Override
       public void value(String key, Object value) {
-        Context context = contexts.peek();
+        var context = contexts.peek();
         assert context != null;
-        context.collector.appender.append(context.data, key, value);
+        context.collector.populater.populate(context.data, key, value);
       }
 
       private void start(String key) {
         var context = contexts.peek();
         var itemType = context == null? type: context.collector.qualifier.apply(key);
-        var collector = findCollector(itemType).erase();
-        contexts.push(new Context(collector, collector.supplier.get()));
+        var collector = findCollector(itemType).raw();
+        var data = collector.supplier.get();
+        contexts.push(new Context(collector, data));
       }
 
       private void end(String key) {
@@ -136,7 +144,7 @@ public class JSONDeserializer {
           this.result = result;
         } else {
           var enclosingContext = contexts.peek();
-          enclosingContext.collector.appender.append(enclosingContext.data, key, result);
+          enclosingContext.collector.populater.populate(enclosingContext.data, key, result);
         }
       }
 
@@ -161,12 +169,6 @@ public class JSONDeserializer {
     return visitor.result;
   }
 
-  public <T> T parseJSON(String text, Class<T> type) {
-    Objects.requireNonNull(text);
-    Objects.requireNonNull(type);
-    return type.cast(parseJSON(text, (Type) type));
-  }
-
   public interface TypeReference<T> {}
 
   private static Type findDeserializerType(Object typeReference) {
@@ -181,6 +183,6 @@ public class JSONDeserializer {
   public <T> T parseJSON(String text, TypeReference<T> typeReference) {
     Objects.requireNonNull(text);
     Objects.requireNonNull(typeReference);
-     return (T) parseJSON(text, findDeserializerType(typeReference));
+    return (T) parseJSON(text, findDeserializerType(typeReference));
   }
 }
