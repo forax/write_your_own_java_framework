@@ -1,6 +1,5 @@
 package com.github.forax.framework.injector;
 
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOError;
@@ -24,7 +23,7 @@ public class UtilsTest {
 
     var method = A.class.getMethod("setColor", String.class);
     var a = new A();
-    Utils.invokeSetter(method, a, "green");
+    Utils.invokeMethod(method, a, "green");
     assertEquals("green", a.color);
   }
   @Test
@@ -37,7 +36,7 @@ public class UtilsTest {
 
     var method = A.class.getMethod("setInteger", Integer.class);
     var a = new A();
-    assertThrows(AssertionError.class, () -> Utils.invokeSetter(method, a, "notAnInteger"));
+    assertThrows(AssertionError.class, () -> Utils.invokeMethod(method, a, "notAnInteger"));
   }
   @Test
   public void invokeSetterThrowUncheckedException() throws NoSuchMethodException {
@@ -49,7 +48,7 @@ public class UtilsTest {
     }
 
     var method = A.class.getMethod("setFoo", Foo.class);
-    assertThrows(IllegalArgumentException.class, () -> Utils.invokeSetter(method, new A(), new Foo() {}));
+    assertThrows(IllegalArgumentException.class, () -> Utils.invokeMethod(method, new A(), new Foo() {}));
   }
   @Test
   public void invokeSetterCheckedException() throws NoSuchMethodException {
@@ -60,7 +59,7 @@ public class UtilsTest {
     }
 
     var method = A.class.getMethod("setString", String.class);
-    assertThrows(UndeclaredThrowableException.class, () -> Utils.invokeSetter(method, new A(), "hello"));
+    assertThrows(UndeclaredThrowableException.class, () -> Utils.invokeMethod(method, new A(), "hello"));
   }
   @Test
   public void invokeSetterCheckedError() throws NoSuchMethodException {
@@ -71,7 +70,7 @@ public class UtilsTest {
     }
 
     var method = A.class.getMethod("setString", String.class);
-    assertThrows(IOError.class, () -> Utils.invokeSetter(method, new A(), "hello"));
+    assertThrows(IOError.class, () -> Utils.invokeMethod(method, new A(), "hello"));
   }
 
 

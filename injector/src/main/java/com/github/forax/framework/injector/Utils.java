@@ -21,9 +21,9 @@ final class Utils {
     }
   }
 
-  static void invokeSetter(Method setter, Object instance, Object value) {
+  static void invokeMethod(Method method, Object instance, Object... args) {
     try {
-      setter.invoke(instance, value);
+      method.invoke(instance, args);
     } catch (IllegalArgumentException e) {
       throw new AssertionError(e);
     } catch (IllegalAccessException e) {
@@ -40,7 +40,7 @@ final class Utils {
     }
   }
 
-  static Object invokeConstructor(Constructor<?> constructor, Object[] args) {
+  static Object invokeConstructor(Constructor<?> constructor, Object... args) {
     try {
       return constructor.newInstance(args);
     } catch (IllegalArgumentException e) {

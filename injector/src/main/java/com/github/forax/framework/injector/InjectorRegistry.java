@@ -104,7 +104,7 @@ public final class InjectorRegistry {
     var instance = type.cast(provider.get());
     for(var setter: findSetters(type)) {
       var parameterType = setter.getParameterTypes()[0];
-      Utils.invokeSetter(setter, instance, getInstance(parameterType));
+      Utils.invokeMethod(setter, instance, getInstance(parameterType));
     }
     return instance;
   }

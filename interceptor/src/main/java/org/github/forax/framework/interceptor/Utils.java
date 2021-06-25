@@ -20,7 +20,7 @@ final class Utils {
     return DEFAULT_VALUES.get(type.descriptorString());
   }
 
-  public static Object invokeMethod(Object object, Method method, Object[] args) throws Exception {
+  public static Object invokeMethod(Object object, Method method, Object... args) throws Exception {
     try {
       return method.invoke(object, args);
     } catch (IllegalArgumentException e) {
