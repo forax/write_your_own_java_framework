@@ -213,14 +213,6 @@ public final class ORM {
     return connection;
   }
 
-  private static Constructor<?> findDefaultConstructor(Class<?> beanType) {
-    try {
-      return beanType.getConstructor();
-    } catch (NoSuchMethodException e) {
-      throw (NoSuchMethodError) new NoSuchMethodError("no public default constructor").initCause(e);
-    }
-  }
-
   private static String findTableName(Class<?> beanType) {
     Table table = beanType.getAnnotation(Table.class);
     if (table == null) {
@@ -235,7 +227,7 @@ public final class ORM {
     var beanInfo = Utils.beanInfo(beanType);
     var idProperty = findId(beanType, beanInfo);
     var tableName = findTableName(beanType);
-    var constructor = beanType.isInterface()? null: findDefaultConstructor(beanType);
+    var constructor = beanType.isInterface()? null: Utils.defaultConstructor(beanType);
 
     return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] { type }, (proxy, method, args) -> {
       var connection = currentConnection();

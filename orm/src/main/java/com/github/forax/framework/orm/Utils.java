@@ -20,6 +20,14 @@ final class Utils {
     }
   }
 
+  public static Constructor<?> defaultConstructor(Class<?> beanType) {
+    try {
+      return beanType.getConstructor();
+    } catch (NoSuchMethodException e) {
+      throw (NoSuchMethodError) new NoSuchMethodError("no public default constructor").initCause(e);
+    }
+  }
+
   public static Object invoke(Object bean, Method method, Object... args) {
     try {
       return method.invoke(bean, args);
@@ -32,9 +40,9 @@ final class Utils {
     }
   }
 
-  public static <T> T newInstance(Constructor<T> constructor) {
+  public static <T> T newInstance(Constructor<T> constructor, Object... args) {
     try {
-      return constructor.newInstance();
+      return constructor.newInstance(args);
     } catch (IllegalArgumentException e) {
       throw new AssertionError(e);
     } catch (InstantiationException e) {
