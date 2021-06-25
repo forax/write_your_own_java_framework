@@ -127,13 +127,18 @@ public record Collector<B>(Function<? super String, ? extends Type> qualifier,
     void populate(B builder, String key, Object value);
   }
 
+  @SuppressWarnings("unchecked")
+  private Collector<Object> raw() {
+    return (Collector<Object>) (Collector<?>) this;
+  }
+  
   public Collector {
     Objects.requireNonNull(qualifier);
     Objects.requireNonNull(supplier);
     Objects.requireNonNull(populater);
     Objects.requireNonNull(finisher);
   }
-
+  
   private static PropertyDescriptor findProperty(Map<String, PropertyDescriptor> propertyMap, String key, Class<?> beanClass) {
     var property = propertyMap.get(key);
     if (property == null) {
@@ -161,8 +166,12 @@ public record Collector<B>(Function<? super String, ? extends Type> qualifier,
 ### Q4
 
 ```java
-public <T> T parseJSON(String text, Class<T> beanClass) {
-    return beanClass.cast(parseJSON(text, (Type) beanClass));
+   private Collector<?> findCollector(Type type) {
+    return Collector.bean(Utils.erase(type));
+    }
+    
+   public <T> T parseJSON(String text, Class<T> beanClass) {
+     return beanClass.cast(parseJSON(text, (Type) beanClass));
     }
 
   public Object parseJSON(String text, Type type) {
@@ -185,7 +194,7 @@ public <T> T parseJSON(String text, Class<T> beanClass) {
       public void startObject(String key) {
         var context = contexts.peek();
         var itemType = context == null? type: context.collector.qualifier.apply(key);
-        var collector = Collector.bean(Utils.erase(itemType));
+        var collector = findCollector(itemType).raw();
         var data = collector.supplier.get();
         contexts.push(new Context(collector, data));
       }
@@ -226,17 +235,13 @@ We then define the list collector
       Objects.requireNonNull(element);
       return new Collector<>(__ -> element, ArrayList::new, (list, key, value) -> list.add(value), List::copyOf);
     }
-
-    @SuppressWarnings("unchecked")
-    private Collector<Object> raw() {
-      return (Collector<Object>) (Collector<?>) this;
-    }
   }
 ```
 
 We add the support of `TypeMatcher`s, the method `addTypeMatcher(typeMatcher)` and `findCollector(type)`.
 
 ```java
+  @FunctionalInterface
   public interface TypeMatcher {
     Optional<Collector<?>> match(Type type);
   }
