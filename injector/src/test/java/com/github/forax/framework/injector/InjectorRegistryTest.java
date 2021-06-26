@@ -309,12 +309,48 @@ public class InjectorRegistryTest {
     public void registerProviderClassWithSettersStaticShouldBeIgnored() {
       var counter = new Object() { int count; };
       var registry = new InjectorRegistry();
-      registry.registerProviderClass(C.class, C.class);
       registry.registerInstance(String.class, "hello");
+      registry.registerProviderClass(C.class, C.class);
       var c = registry.lookupInstance(C.class);
       assertNotNull(c);
     }
+
+    public interface D { }
+    public static class E implements D { }
+
+    @Test @Tag("Q5")
+    public void registerProviderClassWithAnInterface() {
+      var registry = new InjectorRegistry();
+      registry.registerProviderClass(D.class, E.class);
+      var d = registry.lookupInstance(D.class);
+      assertTrue(d instanceof E);
+    }
+
+    public interface F {}
+    public static class G {
+      @Inject
+      public void setF(F f) {
+        fail();
+      }
+    }
+
+    @Test @Tag("Q5")
+    public void registerProviderClassWithAMissingDependency() {
+      var registry = new InjectorRegistry();
+      registry.registerProviderClass(G.class, G.class);  // ok
+      assertThrows(IllegalStateException.class, () -> registry.lookupInstance(G.class));
+    }
+
+    @Test @Tag("Q5")
+    public void registerProviderClassPreconditions() {
+      var registry = new InjectorRegistry();
+      assertAll(
+          () -> assertThrows(NullPointerException.class, () -> registry.registerProviderClass(null, Object.class)),
+          () -> assertThrows(NullPointerException.class, () -> registry.registerProviderClass(Consumer.class, null))
+      );
+    }
   }
+
 
   @Nested
   public class Q6 {
@@ -357,7 +393,7 @@ public class InjectorRegistryTest {
     }
 
     @Test @Tag("Q6")
-    public void registerProviderClassWithUnknownDependency() {
+    public void registerProviderClassWithAMissingDependency() {
       record Bar() {}
       record Foo(Bar bar) {
         @Inject
@@ -384,6 +420,19 @@ public class InjectorRegistryTest {
           () -> assertEquals(0, a.value1),
           () -> assertEquals(1, a.value2)
       );
+    }
+
+    @Test @Tag("Q6")
+    public void registerProviderClassWithAnInterface() {
+      interface D {}
+      record E() implements D {
+        public E {}
+      }
+
+      var registry = new InjectorRegistry();
+      registry.registerProviderClass(D.class, E.class);
+      var d = registry.lookupInstance(D.class);
+      assertTrue(d instanceof E);
     }
 
     record Point(int x, int y) {}
@@ -413,15 +462,6 @@ public class InjectorRegistryTest {
       assertAll(
           () -> assertEquals(new Point(0, 0), circle.center),
           () -> assertEquals("hello", circle.name)
-      );
-    }
-
-    @Test @Tag("Q6")
-    public void registerProviderClassPreconditions() {
-      var registry = new InjectorRegistry();
-      assertAll(
-          () -> assertThrows(NullPointerException.class, () -> registry.registerProviderClass(null, Object.class)),
-          () -> assertThrows(NullPointerException.class, () -> registry.registerProviderClass(Consumer.class, null))
       );
     }
   }
