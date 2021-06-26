@@ -3,8 +3,10 @@ Understand how Spring, JakartaEE, Jackson, Guice and Hibernate works by rewritin
 
 [Tips and Tricks used in the implementation](COMPANION.md)
 
-- [Writing objects to JSON](mapper/README.md), [Reading objects from JSON](mapper/README2.md)
-- [Dependency Injection](injector/README.md)
-- [Interceptor and Aspect Oriented Programming](interceptor/README.md)
-- [Object Relational Mapping (ORM)](orm/README.md)
+- [Writing objects to JSON](mapper/README.md) &#9734;, [Reading objects from JSON](mapper/README2.md) &#9734;&#9734;&#9734;
+- [Dependency Injection](injector/README.md) &#9734;
+- [Interceptor and Aspect Oriented Programming](interceptor/README.md) &#9734;&#9734;
+- [Object Relational Mapping (ORM)](orm/README.md) &#9734;&#9734;&#9734;
+
+The number of &#9734; indicates the implementation complexity (&#9734; is easier than &#9734;&#9734;&#9734;).
 
