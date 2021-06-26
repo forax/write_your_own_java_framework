@@ -3,10 +3,12 @@ package com.github.forax.framework.injector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 public final class InjectorRegistry {
@@ -17,7 +19,6 @@ public final class InjectorRegistry {
   public InjectorRegistry() { }
 
   /*
-  // Q2
   public void registerInstance(Class<?> type, Object instance) {
     Objects.requireNonNull(type);
     Objects.requireNonNull(instance);
@@ -27,7 +28,7 @@ public final class InjectorRegistry {
     }
   }
 
-  public Object getInstance(Class<?> type) {
+  public Object lookupInstance(Class<?> type) {
     var instance = map.get(type);
     if (instance == null) {
       throw new IllegalStateException("no instance of " + type.getName());
@@ -37,7 +38,7 @@ public final class InjectorRegistry {
 
 
   /*
-  // Q3
+  // Q2
   public <T> void registerInstance(Class<T> type, T instance) {
     Objects.requireNonNull(type);
     Objects.requireNonNull(instance);
@@ -47,7 +48,7 @@ public final class InjectorRegistry {
     }
   }
 
-  public <T> T getInstance(Class<T> type) {
+  public <T> T lookupInstance(Class<T> type) {
     var instance = map.get(type);
     if (instance == null) {
       throw new IllegalStateException("no instance of " + type.getName());
@@ -56,7 +57,7 @@ public final class InjectorRegistry {
   }
   */
 
-  // Q4
+  // Q3
   private final HashMap<Class<?>, Supplier<?>> map = new HashMap<>();
 
   public <T> void registerInstance(Class<T> type, T instance) {
@@ -74,80 +75,63 @@ public final class InjectorRegistry {
     }
   }
 
-  /*
-  public <T> T getInstance(Class<T> type) {
+  private Supplier<?> lookupProvider(Class<?> type) {
     var provider = map.get(type);
     if (provider == null) {
       throw new IllegalStateException("no provider of " + type.getName());
     }
-    return type.cast(provider.get());
-  }*/
+    return provider;
+  }
 
-  // Q5
+
+  public <T> T lookupInstance(Class<T> type) {
+    Objects.requireNonNull(type);
+    var provider = lookupProvider(type);
+    return type.cast(provider.get());
+  }
+
+  // Q4
   // package private for test
-  /*
-  static List<Method> findSetters(Class<?> type) {
+  static List<PropertyDescriptor> findInjectableProperties(Class<?> type) {
     var beanInfo = Utils.beanInfo(type);
     return Arrays.stream(beanInfo.getPropertyDescriptors())
-       .map(PropertyDescriptor::getWriteMethod)
-       .filter(setter -> setter != null && setter.isAnnotationPresent(Inject.class))
+       .filter(property -> {
+         var setter = property.getWriteMethod();
+         return setter != null && setter.isAnnotationPresent(Inject.class);
+       })
        .toList();
-  }*/
-
-  // package private for test
-
-  public <T> T getInstance(Class<T> type) {
-    var provider = map.get(type);
-    if (provider == null) {
-      throw new IllegalStateException("no provider of " + type.getName());
-    }
-    var instance = type.cast(provider.get());
-    for(var setter: findSetters(type)) {
-      var parameterType = setter.getParameterTypes()[0];
-      Utils.invokeMethod(instance, setter, getInstance(parameterType));
-    }
-    return instance;
   }
 
-  // Q6
-  private static final ClassValue<List<Method>> SETTERS_CLASS_VALUE = new ClassValue<>() {
-    @Override
-    protected List<Method> computeValue(Class<?> type) {
-      var beanInfo = Utils.beanInfo(type);
-      return Arrays.stream(beanInfo.getPropertyDescriptors())
-          .map(PropertyDescriptor::getWriteMethod)
-          .filter(setter -> setter != null && setter.isAnnotationPresent(Inject.class))
-          .toList();
-    }
-  };
-
-  static List<Method> findSetters(Class<?> type) {
-    return SETTERS_CLASS_VALUE.get(type);
+  // Q5
+  private static Optional<Constructor<?>> injectableConstructor(Class<?> type) {
+    var constructors = Arrays.stream(type.getConstructors())
+        .filter(c -> c.isAnnotationPresent(Inject.class))
+        .toList();
+    return switch (constructors.size()) {
+      case 0 -> Optional.empty();
+      case 1 -> Optional.of(constructors.get(0));
+      default -> throw new IllegalStateException("more than one public constructor annotated with @Inject");
+    };
   }
-
-  // Q7 BONUS
-
-  private static final ClassValue<Constructor<?>> CONSTRUCTOR_CLASS_VALUE = new ClassValue<>() {
-    @Override
-    protected Constructor<?> computeValue(Class<?> type) {
-      var constructors = Arrays.stream(type.getConstructors())
-          .filter(c -> c.isAnnotationPresent(Inject.class))
-          .toList();
-      return switch (constructors.size()) {
-        case 0 -> throw new IllegalStateException("no public constructor annotated with @Inject");
-        case 1 -> constructors.get(0);
-        default -> throw new IllegalStateException("more than one public constructor annotated with @Inject");
-      };
-    }
-  };
 
   public <T> void registerProviderClass(Class<T> type, Class<? extends T> providerClass) {
     Objects.requireNonNull(type);
     Objects.requireNonNull(providerClass);
-    var constructor = CONSTRUCTOR_CLASS_VALUE.get(providerClass);
+    var constructor = injectableConstructor(providerClass)
+        .orElseGet(() -> Utils.defaultConstructor(providerClass));
+    var providers = Arrays.stream(constructor.getParameterTypes())
+        .map(this::lookupProvider)
+        .toList();
+    var properties = findInjectableProperties(providerClass);
     registerProvider(type, () -> {
-      var args = Arrays.stream(constructor.getParameterTypes()).map(this::getInstance).toArray();
-      return type.cast(Utils.invokeConstructor(constructor, args));
+      var args = providers.stream().map(Supplier::get).toArray();
+      var instance = Utils.newInstance(constructor, args);
+      for(var property: properties) {
+        var setter = property.getWriteMethod();
+        var propertyType = property.getPropertyType();
+        Utils.invokeMethod(instance, setter, lookupInstance(propertyType));
+      }
+      return type.cast(instance);
     });
   }
 }

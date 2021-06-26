@@ -4,15 +4,15 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import java.beans.PropertyDescriptor;
 import java.lang.annotation.Target;
-import java.lang.reflect.Method;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
 import static java.lang.annotation.ElementType.CONSTRUCTOR;
 import static java.lang.annotation.ElementType.METHOD;
+import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -36,37 +36,32 @@ public class InjectorRegistryTest {
     public void atInjectTargetMethodAndConstructorAndRetentionIsRuntime() {
       assertEquals(List.of(METHOD, CONSTRUCTOR), List.of(Inject.class.getAnnotation(Target.class).value()));
     }
-  }
 
-
-  @Nested
-  public class Q2 {
-
-    @Test @Tag("Q2")
+    @Test @Tag("Q1")
     public void registerInstanceAndGetInstanceString() {
       var registry = new InjectorRegistry();
       registry.registerInstance(String.class, "hello");
-      assertEquals("hello", registry.getInstance(String.class));
+      assertEquals("hello", registry.lookupInstance(String.class));
     }
 
-    @Test @Tag("Q2")
+    @Test @Tag("Q1")
     public void registerInstanceAndGetInstanceInteger() {
       var registry = new InjectorRegistry();
       registry.registerInstance(Integer.class, 42);
-      assertEquals(42, registry.getInstance(Integer.class));
+      assertEquals(42, registry.lookupInstance(Integer.class));
     }
 
-    @Test @Tag("Q2")
+    @Test @Tag("Q1")
     public void registerInstanceAndGetInstanceSameInstance() {
       record Person(String name) {}
 
       var registry = new InjectorRegistry();
       var bob = new Person("Bob");
       registry.registerInstance(Person.class, bob);
-      assertSame(bob, registry.getInstance(Person.class));
+      assertSame(bob, registry.lookupInstance(Person.class));
     }
 
-    @Test @Tag("Q2")
+    @Test @Tag("Q1")
     public void registerInstanceAndGetInstanceWithAnInterface() {
       interface I {
         String hello();
@@ -81,10 +76,10 @@ public class InjectorRegistryTest {
       var registry = new InjectorRegistry();
       var impl = new Impl();
       registry.registerInstance(I.class, impl);
-      assertSame(impl, registry.getInstance(I.class));
+      assertSame(impl, registry.lookupInstance(I.class));
     }
 
-    @Test @Tag("Q2")
+    @Test @Tag("Q1")
     public void registerInstancePreconditions() {
       var registry = new InjectorRegistry();
       assertAll(
@@ -92,19 +87,25 @@ public class InjectorRegistryTest {
           () -> assertThrows(NullPointerException.class, () -> registry.registerInstance(Consumer.class, null))
       );
     }
+
+    @Test @Tag("Q1")
+    public void lookupInstancePreconditions() {
+      var registry = new InjectorRegistry();
+      assertThrows(NullPointerException.class, () -> registry.lookupInstance(null));
+    }
   }
 
 
   @Nested
-  public class Q3 {
-    @Test @Tag("Q3")
+  public class Q2 {
+    @Test @Tag("Q2")
     public void registerInstanceAndGetInstancePreciseSignature() {
       InjectorRegistry registry = new InjectorRegistry();
       registry.registerInstance(String.class, "hello");
-      String instance = registry.getInstance(String.class);
+      String instance = registry.lookupInstance(String.class);
       assertEquals("hello", instance);
     }
-    //@Test @Tag("Q3")
+    //@Test @Tag("Q2")
     //public void shouldNotCompilePreciseSignature() {
     //  var registry = new Registry();
     //  registry.registerInstance(String.class, 3);
@@ -113,20 +114,20 @@ public class InjectorRegistryTest {
 
 
   @Nested
-  public class Q4 {
-    @Test @Tag("Q4")
+  public class Q3 {
+    @Test @Tag("Q3")
     public void registerProvider() {
       record Bar() {}
 
       var registry = new InjectorRegistry();
       registry.registerProvider(Bar.class, Bar::new);
-      var instance1 = registry.getInstance(Bar.class);
-      var instance2 = registry.getInstance(Bar.class);
+      var instance1 = registry.lookupInstance(Bar.class);
+      var instance2 = registry.lookupInstance(Bar.class);
       assertNotSame(instance1, instance2);
       assertEquals(instance1, instance2);
     }
 
-    @Test @Tag("Q4")
+    @Test @Tag("Q3")
     public void registerProviderWithAnInterface() {
       interface I {
         String hello();
@@ -140,13 +141,13 @@ public class InjectorRegistryTest {
 
       var registry = new InjectorRegistry();
       registry.registerProvider(I.class, Impl::new);
-      var instance1 = registry.getInstance(I.class);
-      var instance2 = registry.getInstance(I.class);
+      var instance1 = registry.lookupInstance(I.class);
+      var instance2 = registry.lookupInstance(I.class);
       assertNotSame(instance1, instance2);
       assertEquals(instance1, instance2);
     }
 
-    @Test @Tag("Q4")
+    @Test @Tag("Q3")
     public void registerProviderPreconditions() {
       var registry = new InjectorRegistry();
       assertAll(
@@ -158,183 +159,192 @@ public class InjectorRegistryTest {
 
 
   @Nested
-  public class Q5 {
-    @Test @Tag("Q5")
-    public void findSettersOneInjectMethod() {
+  public class Q4 {
+    @Test @Tag("Q4")
+    public void findInjectablePropertiesOneInjectMethod() {
       class A {
         @Inject
         public void setValue(String value) {}
       }
-      List<Method> setters = InjectorRegistry.findSetters(A.class);
+      List<PropertyDescriptor> properties = InjectorRegistry.findInjectableProperties(A.class);
       assertAll(
-          () -> assertEquals(1, setters.size()),
-          () -> assertEquals(A.class.getMethod("setValue", String.class), setters.get(0))
+          () -> assertEquals(1, properties.size()),
+          () -> assertEquals(A.class.getMethod("setValue", String.class), properties.get(0).getWriteMethod())
       );
     }
 
-    @Test @Tag("Q5")
-    public void findSettersNoInjectMethod() {
+    @Test @Tag("Q4")
+    public void findInjectablePropertiesNoInjectMethod() {
       class A {
         // No @Inject
         public void setValue(String value) {}
       }
-      var setters = InjectorRegistry.findSetters(A.class);
-      assertEquals(List.of(), setters);
+      var properties = InjectorRegistry.findInjectableProperties(A.class);
+      assertEquals(List.of(), properties);
     }
 
-    @Test @Tag("Q5")
-    public void findSettersNoPublicMethod() {
+    @Test @Tag("Q4")
+    public void findInjectablePropertiesNoPublicMethod() {
       class A {
         @Inject
         private void setValue(String value) {}
       }
-      var setters = InjectorRegistry.findSetters(A.class);
-      assertEquals(List.of(), setters);
+      var properties = InjectorRegistry.findInjectableProperties(A.class);
+      assertEquals(List.of(), properties);
     }
 
-    @Test @Tag("Q5")
-    public void findSettersOneInjectAbstractMethod() {
+    @Test @Tag("Q4")
+    public void findInjectablePropertiesOneInjectAbstractMethod() {
       interface I {
         @Inject
         void setValue(String value);
       }
-      var setters = InjectorRegistry.findSetters(I.class);
+      var properties = InjectorRegistry.findInjectableProperties(I.class);
       assertAll(
-          () -> assertEquals(1, setters.size()),
-          () -> assertEquals(I.class.getMethod("setValue", String.class), setters.get(0))
+          () -> assertEquals(1, properties.size()),
+          () -> assertEquals(I.class.getMethod("setValue", String.class), properties.get(0).getWriteMethod())
       );
     }
 
-    @Test @Tag("Q5")
-    public void findSettersOneInjectDefaultMethod() {
+    @Test @Tag("Q4")
+    public void findInjectablePropertiesOneInjectDefaultMethod() {
       interface I {
         @Inject
         default void setValue(Integer value) {}
       }
-      var setters = InjectorRegistry.findSetters(I.class);
+      var properties = InjectorRegistry.findInjectableProperties(I.class);
       assertAll(
-          () -> assertEquals(1, setters.size()),
-          () -> assertEquals(I.class.getMethod("setValue", Integer.class), setters.get(0))
+          () -> assertEquals(1, properties.size()),
+          () -> assertEquals(I.class.getMethod("setValue", Integer.class), properties.get(0).getWriteMethod())
       );
     }
 
-    @Test @Tag("Q5")
-    public void findSettersTwoInjectMethod() throws NoSuchMethodException {
+    @Test @Tag("Q4")
+    public void findInjectablePropertiesTwoInjectMethod() throws NoSuchMethodException {
       class A {
         @Inject
         public void setValue1(Double value) {}
         @Inject
         public void setValue2(Double value) {}
       }
-      var setters = InjectorRegistry.findSetters(A.class);
+      var properties = InjectorRegistry.findInjectableProperties(A.class);
       var methods = Set.of(
           A.class.getMethod("setValue1", Double.class),
           A.class.getMethod("setValue2", Double.class)
       );
       assertAll(
-          () -> assertEquals(2, setters.size()),
-          () -> assertEquals(methods, new HashSet<>(setters))
+          () -> assertEquals(2, properties.size()),
+          () -> assertEquals(methods, properties.stream().map(PropertyDescriptor::getWriteMethod).collect(toSet()))
       );
+    }
+  }
+
+  @Nested
+  public class Q5 {
+    public static class A {
+      private String s;
+      private int i;
+
+      @Inject
+      public void setString(String s) {
+        this.s = s;
+      }
+      @Inject
+      public void setInteger(Integer i) {
+        this.i = i;
+      }
+
+      // No @Inject
+      public void setAnotherInteger(Integer i) {
+        fail();
+      }
     }
 
     @Test @Tag("Q5")
-    public void registerProviderWithSettersInjection() {
-      class A {
-        private String s;
-        private int i;
-
-        @Inject
-        public void setString(String s) {
-          this.s = s;
-        }
-        @Inject
-        public void setInteger(Integer i) {
-          this.i = i;
-        }
-
-        // No @Inject
-        public void setAnotherInteger(Integer i) {
-          fail();
-        }
-      }
-
+    public void registerProviderClassWithSettersInjection() {
       var registry = new InjectorRegistry();
-      registry.registerProvider(A.class, A::new);
+      registry.registerProviderClass(A.class, A.class);
       registry.registerInstance(String.class, "hello");
       registry.registerInstance(Integer.class, 42);
-      var a = registry.getInstance(A.class);
+      var a = registry.lookupInstance(A.class);
       assertAll(
           () -> assertEquals("hello", a.s),
           () -> assertEquals(42, a.i)
       );
     }
 
-    @Test @Tag("Q5")
-    public void registerProviderWithSettersWithProviderInjection() {
-      class A {
-        private int value1;
-        private int value2;
+    public static class B {
+      private int value1;
+      private int value2;
 
-        @Inject
-        public void setValue1(Integer value1) {
-          this.value1 = value1;
-        }
-        @Inject
-        public void setValue2(Integer value2) {
-          this.value2 = value2;
-        }
+      @Inject
+      public void setValue1(Integer value1) {
+        this.value1 = value1;
       }
+      @Inject
+      public void setValue2(Integer value2) {
+        this.value2 = value2;
+      }
+    }
 
+    @Test @Tag("Q5")
+    public void registerProviderClassWithSettersWithProviderInjection() {
       var counter = new Object() { int count; };
       var registry = new InjectorRegistry();
-      registry.registerProvider(A.class, A::new);
+      registry.registerProviderClass(B.class, B.class);
       registry.registerProvider(Integer.class, () -> counter.count++);
-      var a = registry.getInstance(A.class);
-      assertTrue((a.value1 == 0 && a.value2 == 1) ||
-                 (a.value2 == 0 && a.value1 == 1));
+      var b = registry.lookupInstance(B.class);
+      assertTrue((b.value1 == 0 && b.value2 == 1) ||
+          (b.value2 == 0 && b.value1 == 1));
+    }
+
+    public static class C {
+      @Inject
+      static void setValue(String s) {
+        fail();
+      }
     }
 
     @Test @Tag("Q5")
-    public void registerProviderWithSettersStaticShouldBeIgnored() {
-      interface A {
-        static void setValue(String s) {
-          fail();
-        }
-      }
-
+    public void registerProviderClassWithSettersStaticShouldBeIgnored() {
       var counter = new Object() { int count; };
       var registry = new InjectorRegistry();
-      registry.registerInstance(A.class, new A() {});
+      registry.registerProviderClass(C.class, C.class);
       registry.registerInstance(String.class, "hello");
-      var a = registry.getInstance(A.class);
-      assertNotNull(a);
-    }
-
-    @Test @Tag("Q5")
-    public void registerProviderWithSettersDefaultMethod() {
-      interface A {
-        @Inject
-        default void setValue(String value) {
-          assertEquals("hello", value);
-          FLAG.set(true);
-        }
-
-        ThreadLocal<Boolean> FLAG = ThreadLocal.withInitial(() -> false);
-      }
-
-      var registry = new InjectorRegistry();
-      registry.registerInstance(A.class, new A() {});
-      registry.registerInstance(String.class, "hello");
-      var a = registry.getInstance(A.class);
-      assertTrue(A.FLAG.get());
+      var c = registry.lookupInstance(C.class);
+      assertNotNull(c);
     }
   }
 
-
   @Nested
-  public class Q7 {
-    @Test @Tag("Q7")
-    public void registerProviderClassWithAnEmptyClass() {
+  public class Q6 {
+    @Test @Tag("Q6")
+    public void registerProviderClassNoInjectConstructorNoDefaultConstructor() {
+      class A {
+        // No @Inject, No default (local class have a reference to the enclosing class)
+        public A() {}
+      }
+
+      var registry = new InjectorRegistry();
+      assertThrows(NoSuchMethodError.class, () -> registry.registerProviderClass(A.class, A.class));
+    }
+
+    public static class B {
+      @Inject
+      public B() {}
+
+      @Inject
+      public B(Boolean b) {}
+    }
+
+    @Test @Tag("Q6")
+    public void registerProviderClassMultipleInjectConstructors() {
+      var registry = new InjectorRegistry();
+      assertThrows(IllegalStateException.class, () -> registry.registerProviderClass(B.class, B.class));
+    }
+
+    @Test @Tag("Q6")
+    public void registerProviderClassWithAnEmptyRecord() {
       record A() {
         @Inject
         public A {}
@@ -342,11 +352,23 @@ public class InjectorRegistryTest {
 
       var registry = new InjectorRegistry();
       registry.registerProviderClass(A.class, A.class);
-      A a = registry.getInstance(A.class);
+      A a = registry.lookupInstance(A.class);
       assertNotNull(a);
     }
 
-    @Test @Tag("Q7")
+    @Test @Tag("Q6")
+    public void registerProviderClassWithUnknownDependency() {
+      record Bar() {}
+      record Foo(Bar bar) {
+        @Inject
+        public Foo {}
+      }
+
+      var registry = new InjectorRegistry();
+      assertThrows(IllegalStateException.class, () -> registry.registerProviderClass(Foo.class, Foo.class));
+    }
+
+    @Test @Tag("Q6")
     public void registerProviderClassWithAConstructorWithTwoIntegers() {
       record A(Integer value1, Integer value2) {
         @Inject
@@ -355,38 +377,13 @@ public class InjectorRegistryTest {
 
       var counter = new Object() { int count; };
       var registry = new InjectorRegistry();
-      registry.registerProviderClass(A.class, A.class);
       registry.registerProvider(Integer.class, () -> counter.count++);
-      A a = registry.getInstance(A.class);
+      registry.registerProviderClass(A.class, A.class);
+      A a = registry.lookupInstance(A.class);
       assertAll(
           () -> assertEquals(0, a.value1),
           () -> assertEquals(1, a.value2)
       );
-    }
-
-    @Test @Tag("Q7")
-    public void registerProviderClassNoInjectConstructor() {
-      class A {
-        // No @Inject
-        public A() {}
-      }
-
-      var registry = new InjectorRegistry();
-      assertThrows(IllegalStateException.class, () -> registry.registerProviderClass(A.class, A.class));
-    }
-
-    @Test @Tag("Q7")
-    public void registerProviderClassMultipleInjectConstructors() {
-      class A {
-        @Inject
-        public A() {}
-
-        @Inject
-        public A(Boolean b) {}
-      }
-
-      var registry = new InjectorRegistry();
-      assertThrows(IllegalStateException.class, () -> registry.registerProviderClass(A.class, A.class));
     }
 
     record Point(int x, int y) {}
@@ -405,21 +402,21 @@ public class InjectorRegistryTest {
       }
     }
 
-    @Test @Tag("Q7")
+    @Test @Tag("Q6")
     public void exampleWithAll() {
       var registry = new InjectorRegistry();
       registry.registerInstance(Point.class, new Point(0, 0));
       registry.registerProvider(String.class, () -> "hello");
       registry.registerProviderClass(Circle.class, Circle.class);
 
-      var circle = registry.getInstance(Circle.class);
+      var circle = registry.lookupInstance(Circle.class);
       assertAll(
           () -> assertEquals(new Point(0, 0), circle.center),
           () -> assertEquals("hello", circle.name)
       );
     }
 
-    @Test @Tag("Q7")
+    @Test @Tag("Q6")
     public void registerProviderClassPreconditions() {
       var registry = new InjectorRegistry();
       assertAll(
