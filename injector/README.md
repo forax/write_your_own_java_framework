@@ -127,7 +127,7 @@ The unit tests are in [InjectorRegistryTest.java](src/test/java/com/github/forax
    all properties (`PropertyDescriptor`) that have a setter annotated with `@Inject`.
    Then check that the tests in the nested class "Q4" all pass.
 
-   Note: There are method `Utils.beanInfo()`.
+   Note: There is a method `Utils.beanInfo()`.
 
   
 5. We want to add a method `registerProviderClass(type, providerClass)` that takes a type and a class,
@@ -138,8 +138,8 @@ The unit tests are in [InjectorRegistryTest.java](src/test/java/com/github/forax
    Write the method `registerProviderClass(type, providerClass)` and
    check that the tests in the nested class "Q5" all pass.
 
-   Note: There method `Utils.defaultConstructor()`, `Utils.newInstance()` and `Utils.invokeMethod()`
-   already exist.
+   Note: The methods `Utils.defaultConstructor()`, `Utils.newInstance()` and `Utils.invokeMethod()`
+   are available.
 
 
 6. We want to add the support of constructor injection. For that, we want to modify the code
