@@ -114,16 +114,18 @@ cache the part of the computation that can be cached.
 1. Create a class `InterceptorRegistry` with two public methods
    - a method `addInterceptor(annotationClass, interceptor)` that register into a `Map` the association between
      an annotation class and an interceptor
-   - a method `createProxy(type, delegate)` that creates a proxy using `java.lang.reflect.Proxy`
-     (cf [COMPANION](../COMPANION.md#dynamic-proxy)) that each all method call calls the interceptor.
+   - a method `createProxy(type, delegate)` that creates a [dynamic proxy](../COMPANION.md#dynamic-proxy)
+     with all methods calling the interceptor using `java.lang.reflect.Proxy`.
    For now, the parameter `delegate` is ignored and the parameter `proceed` of the interceptor is always 'null'.
    Check that the tests in the nested class "Q1" all pass.
    
+
 2. Add a package private instance method `findInterceptors(method)` that takes a `java.lang.reflect.Method` as
    parameter and returns a `java.util.stream.Stream` of all interceptors that should call be called to intercept
-   that method. The idea is to gather all annotations of that method (cf [COMPANION](../COMPANION.md#annotation))
+   that method. The idea is to gather [all annotations](../COMPANION.md#annotation) of that method
    and find all corresponding interceptors.
    Check that the tests in the nested class "Q2" all pass.
+
 
 3. We now want to be support several interceptors, and a delegate.
    If the delegate is null, the return value will be  the default value of the return type otherwise
@@ -148,11 +150,13 @@ cache the part of the computation that can be cached.
    To finish, re-write `createProxy(type, delegate)` to call create a proxy that will call `findInterceptors(method)`
    to find the interceptors then creates the callables using `getCallable()` then call the first callbable.
    Check that the tests in the nested class "Q3" all pass.
-  
+   
+
 4. We now want to be able to add several interceptors on the same annotation, for that modfiy the `Map` that stores
    the interceptors to store a `List<Interceptor>` and modify `addInterceptor(annotationClass, interceptor)`
    and `findInterceptors(method)` to support several interceptors on the same annotation.
    Check that the tests in the nested class "Q4" all pass.
+
 
 5. You may have noticed that in the declaration of `getCallable()` above, the first two parameters have the same value
    for a method while the three others change (`proxy` and `args` change at each call and `delegate` change for each proxy). 
@@ -164,9 +168,11 @@ cache the part of the computation that can be cached.
 
    Note: you can implement `getFun` as a one giant expression using a Stream :)
 
+
 6. We can now improve the implementation by caching the `Fun` per `Method` by using a `Map<Method, Fun>`.
    Modify `createProxy()` to use the cache of `Fun`.
    Check that all the previous tests pass.
+
 
 7. We currently support only annotations on methods, we want to be able to intercept method if the annotation
    is not only declared on the method but on the declaring interface or on one of the parameter.
