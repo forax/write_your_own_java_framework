@@ -130,6 +130,8 @@ public interface TypeMatcher {
 
 ## Let's implement it
 
+The unit tests are in [JSONReaderTest.java](src/test/java/com/github/forax/framework/mapper/JSONReaderTest.java)
+
 1. Let's start small, in the class `JSONReader` write a method `parseJSON(text, class)` that takes
    a JSON text, and the class of a Java Beans and returns an instance of the class with
    initialized by calling the setters corresponding to the JSON keys.

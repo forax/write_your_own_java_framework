@@ -1,6 +1,7 @@
 # Writing objects to JSON
 
-The idea is to implement an object, the `JSONWriter`, that is able to convert an object to a [JSON](https://json.org) text.
+The idea is to implement an object, the `JSONWriter`, that is able to convert an object to a
+[JSON](https://json.org) text.
 
 A `JSONWriter` is able to convert
 - basic JSON type like boolean, int or String
@@ -31,6 +32,9 @@ writer.configure(MonthDay.class,
 var person = new Person(MonthDay.of(4, 17), new Address());
 var json = writer.toJSON(person);  // {"birth-day": "APRIL-17", "address": {"international": false}}
 ```
+
+
+## Let's implement it
 
 The unit tests are in [JSONWriterTest.java](src/test/java/com/github/forax/framework/mapper/JSONWriterTest.java)
 
