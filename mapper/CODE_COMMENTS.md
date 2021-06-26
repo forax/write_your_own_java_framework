@@ -50,7 +50,7 @@
 
 ```java
   private interface Generator {
-    String generate(JSONSerializer serializer, Object object);
+    String generate(JSONWriter writer, Object object);
   }
 
   private static final ClassValue<PropertyDescriptor[]> PROPERTIES_CLASS_VALUE = new ClassValue<>() {
@@ -82,7 +82,7 @@
         .map(property -> {
           var name = property.getName();
           var getter = property.getReadMethod();
-          return "\"" + name + "\": " + serializer.toJSON(Utils.invoke(o, getter));
+          return "\"" + name + "\": " + writer.toJSON(Utils.invoke(o, getter));
         })
         .collect(joining(", ", "{", "}"));
   }
@@ -92,7 +92,7 @@
 
 ```java
   private interface Generator {
-    String generate(JSONSerializer serializer, Object object);
+    String generate(JSONWriter writer, Object object);
   }
 
   private static final ClassValue<Generator> GENERATOR_CLASS_VALUE = new ClassValue<>() {
@@ -104,11 +104,11 @@
           .<Generator>map(property -> {
             var key = "\"" + property.getName() + "\": ";
             var getter = property.getReadMethod();
-            return (serializer, o) -> key + serializer.toJSON(Utils.invoke(o, getter));
+            return (writer, o) -> key + writer.toJSON(Utils.invoke(o, getter));
           })
           .toList();
-      return (serializer, object) -> list.stream()
-          .map(generator -> generator.generate(serializer, object))
+      return (writer, object) -> list.stream()
+          .map(generator -> generator.generate(writer, object))
           .collect(joining(", ", "{", "}"));
     }
   };
@@ -136,7 +136,7 @@
 
 ```java
   private interface Generator {
-    String generate(JSONSerializer serializer, Object object);
+    String generate(JSONWriter writer, Object object);
   }
   
   private final HashMap<Class<?>, Generator> map = new HashMap<>();
@@ -144,7 +144,7 @@
   public <T> void configure(Class<? extends T> type, Function<? super T, String> function) {
     Objects.requireNonNull(type);
     Objects.requireNonNull(function);
-    var result = map.putIfAbsent(type, (serializer, object) -> function.apply(type.cast(object)));
+    var result = map.putIfAbsent(type, (writer, object) -> function.apply(type.cast(object)));
     if (result != null) {
       throw new IllegalStateException("already a function registered for type " + type.getName());
     }
@@ -187,11 +187,11 @@
             var propertyAnnotation = getter.getAnnotation(JSONProperty.class);
             var propertyName = propertyAnnotation == null? property.getName(): propertyAnnotation.value();
             var key = "\"" + propertyName + "\": ";
-            return (serializer, o) -> key + serializer.toJSON(Utils.invoke(o, getter));
+            return (writer, o) -> key + writer.toJSON(Utils.invoke(o, getter));
           })
           .toList();
-      return (serializer, object) -> list.stream()
-          .map(generator -> generator.generate(serializer, object))
+      return (writer, object) -> list.stream()
+          .map(generator -> generator.generate(writer, object))
           .collect(joining(", ", "{", "}"));
     }
   };
@@ -210,11 +210,11 @@
             var propertyAnnotation = getter.getAnnotation(JSONProperty.class);
             var propertyName = propertyAnnotation == null? property.getName(): propertyAnnotation.value();
             var key = "\"" + propertyName + "\": ";
-            return (serializer, o) -> key + serializer.toJSON(Utils.invoke(o, getter));
+            return (writer, o) -> key + writer.toJSON(Utils.invoke(o, getter));
           })
           .toList();
-      return (serializer, object) -> list.stream()
-          .map(generator -> generator.generate(serializer, object))
+      return (writer, object) -> list.stream()
+          .map(generator -> generator.generate(writer, object))
           .collect(joining(", ", "{", "}"));
     }
   };

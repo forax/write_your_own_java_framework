@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toMap;
 
-public class JSONDeserializer {
+public class JSONReader {
   public record Collector<B>(Function<? super String, ? extends Type> qualifier,
                              Supplier<? extends B> supplier, Populater<B> populater, Function<? super B, ?> finisher) {
     public interface Populater<B> {

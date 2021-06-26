@@ -10,9 +10,9 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.joining;
 
-public final class JSONSerializer {
+public final class JSONWriter {
   private interface Generator {
-    String generate(JSONSerializer serializer, Object object);
+    String generate(JSONWriter writer, Object object);
   }
 
   private static final ClassValue<Generator> GENERATOR_CLASS_VALUE = new ClassValue<>() {
@@ -25,11 +25,11 @@ public final class JSONSerializer {
             var propertyAnnotation = getter.getAnnotation(JSONProperty.class);
             var propertyName = propertyAnnotation == null? property.getName(): propertyAnnotation.value();
             var key = "\"" + propertyName + "\": ";
-            return (serializer, o) -> key + serializer.toJSON(Utils.invokeMethod(o, getter));
+            return (writer, o) -> key + writer.toJSON(Utils.invokeMethod(o, getter));
           })
           .toList();
-      return (serializer, object) -> generators.stream()
-          .map(generator -> generator.generate(serializer, object))
+      return (writer, object) -> generators.stream()
+          .map(generator -> generator.generate(writer, object))
           .collect(joining(", ", "{", "}"));
     }
   };
@@ -56,7 +56,7 @@ public final class JSONSerializer {
   public <T> void configure(Class<? extends T> type, Function<? super T, String> function) {
     Objects.requireNonNull(type);
     Objects.requireNonNull(function);
-    var result = map.putIfAbsent(type, (serializer, object) -> function.apply(type.cast(object)));
+    var result = map.putIfAbsent(type, (__, object) -> function.apply(type.cast(object)));
     if (result != null) {
       throw new IllegalStateException("already a function registered for type " + type.getName());
     }

@@ -16,20 +16,20 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SuppressWarnings({"unused", "static-method"})
-public class JSONSerializerTest {
+public class JSONWriterTest {
 
   @Nested
   public class Q1 {
     @Test @Tag("Q1")
     public void toJSONPrimitive() {
-      var serializer = new JSONSerializer();
+      var writer = new JSONWriter();
       assertAll(
-          () -> assertEquals("null", serializer.toJSON(null)),
-          () -> assertEquals("true", serializer.toJSON(true)),
-          () -> assertEquals("false", serializer.toJSON(false)),
-          () -> assertEquals("3", serializer.toJSON(3)),
-          () -> assertEquals("4.0", serializer.toJSON(4.0)),
-          () -> assertEquals("\"foo\"", serializer.toJSON("foo"))
+          () -> assertEquals("null", writer.toJSON(null)),
+          () -> assertEquals("true", writer.toJSON(true)),
+          () -> assertEquals("false", writer.toJSON(false)),
+          () -> assertEquals("3", writer.toJSON(3)),
+          () -> assertEquals("4.0", writer.toJSON(4.0)),
+          () -> assertEquals("\"foo\"", writer.toJSON("foo"))
       );
     }
   }  // end of Q1
@@ -69,9 +69,9 @@ public class JSONSerializerTest {
   public class Q2 {
     @Test @Tag("Q2")
     public void toJSONWithASimpleClass() {
-      var serializer = new JSONSerializer();
+      var writer = new JSONWriter();
       var car = new Car("Marty");
-      var json = serializer.toJSON(car);
+      var json = writer.toJSON(car);
       assertEquals("""
           {"owner": "Marty"}\
           """, json);
@@ -79,9 +79,9 @@ public class JSONSerializerTest {
 
     @Test @Tag("Q2")
     public void toJSONWithAClass() {
-      var serializer = new JSONSerializer();
+      var writer = new JSONWriter();
       var alien = new Alien("Elvis", "Proxima Centauri");
-      var json = serializer.toJSON(alien);
+      var json = writer.toJSON(alien);
       var expected1 = """
           {"name": "Elvis", "planet": "Proxima Centauri"}\
           """;
@@ -97,9 +97,9 @@ public class JSONSerializerTest {
     @Test @Tag("Q2")
     public void toJSONEmptyClass() {
       class Empty { }
-      var serializer = new JSONSerializer();
+      var writer = new JSONWriter();
       var empty = new Empty();
-      var json = serializer.toJSON(empty);
+      var json = writer.toJSON(empty);
       assertEquals("{}", json);
     }
 
@@ -143,17 +143,17 @@ public class JSONSerializerTest {
   public class Q5 {
     @Test @Tag("Q5")
     public void toJSONWithConfigure() {
-      var serializer = new JSONSerializer();
-      serializer.configure(LocalDateTime.class, time -> time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-      assertEquals("2021-06-16T20:53:17", serializer.toJSON(LocalDateTime.of(2021, 6, 16, 20, 53, 17)));
+      var writer = new JSONWriter();
+      writer.configure(LocalDateTime.class, time -> time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+      assertEquals("2021-06-16T20:53:17", writer.toJSON(LocalDateTime.of(2021, 6, 16, 20, 53, 17)));
     }
 
     @Test @Tag("Q5")
     public void toJSONBeanWithConfigure() {
-      var serializer = new JSONSerializer();
-      serializer.configure(LocalDateTime.class, time -> time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+      var writer = new JSONWriter();
+      writer.configure(LocalDateTime.class, time -> time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
       var startDate = new StartDate(LocalDateTime.of(2021, 7, 1, 20, 7));
-      var json = serializer.toJSON(startDate);
+      var json = writer.toJSON(startDate);
       assertEquals("""
       {"time": 2021-07-01T20:07:00}\
       """, json);
@@ -161,17 +161,17 @@ public class JSONSerializerTest {
 
     @Test @Tag("Q5")
     public void configureTwice() {
-      var serializer = new JSONSerializer();
-      serializer.configure(LocalTime.class, __ -> "foo");
-      assertThrows(IllegalStateException.class, () -> serializer.configure(LocalTime.class, __ -> "bar"));
+      var writer = new JSONWriter();
+      writer.configure(LocalTime.class, __ -> "foo");
+      assertThrows(IllegalStateException.class, () -> writer.configure(LocalTime.class, __ -> "bar"));
     }
 
     @Test @Tag("Q5")
     public void configurePreconditions() {
-      var serializer = new JSONSerializer();
+      var writer = new JSONWriter();
       assertAll(
-          () -> assertThrows(NullPointerException.class, () -> serializer.configure(null, String::toString)),
-          () -> assertThrows(NullPointerException.class, () -> serializer.configure(Timestamp.class, null))
+          () -> assertThrows(NullPointerException.class, () -> writer.configure(null, String::toString)),
+          () -> assertThrows(NullPointerException.class, () -> writer.configure(Timestamp.class, null))
       );
     }
 
@@ -181,9 +181,9 @@ public class JSONSerializerTest {
   public class Q6 {
     @Test @Tag("Q6")
     public void toJSONWithJSONProperty() {
-      var serializer = new JSONSerializer();
+      var writer = new JSONWriter();
       var person = new Person("Bob", "Hunky");
-      var json = serializer.toJSON(person);
+      var json = writer.toJSON(person);
       assertEquals("""
           {"first-name": "Bob", "last-name": "Hunky"}\
           """,
@@ -208,9 +208,9 @@ public class JSONSerializerTest {
     @Test @Tag("Q7")
     public void toJSONWithARecord() {
       record Person(String name, int age) { }
-      var serializer = new JSONSerializer();
+      var writer = new JSONWriter();
       var person = new Person("Ana", 37);
-      var json = serializer.toJSON(person);
+      var json = writer.toJSON(person);
       assertEquals("""
           {"name": "Ana", "age": 37}\
           """,
@@ -220,9 +220,9 @@ public class JSONSerializerTest {
     @Test @Tag("Q7")
     public void toJSONEmptyRecord() {
       record Empty() { }
-      var serializer = new JSONSerializer();
+      var writer = new JSONWriter();
       var empty = new Empty();
-      var json = serializer.toJSON(empty);
+      var json = writer.toJSON(empty);
       assertEquals("{}", json);
     }
 
@@ -230,9 +230,9 @@ public class JSONSerializerTest {
     public void toJSONRecursive() {
       record Address(String street) { }
       record Person(String name, Address address) { }
-      var serializer = new JSONSerializer();
+      var writer = new JSONWriter();
       var person = new Person("Bob", new Address("21 Jump Street"));
-      var json = serializer.toJSON(person);
+      var json = writer.toJSON(person);
       assertEquals("""
           {"name": "Bob", "address": {"street": "21 Jump Street"}}\
           """,
@@ -241,10 +241,10 @@ public class JSONSerializerTest {
 
     @Test @Tag("Q7")
     public void toJSONFullExample() {
-      var serializer = new JSONSerializer();
-      serializer.configure(MonthDay.class, monthDay -> serializer.toJSON(monthDay.getMonth() + "-" + monthDay.getDayOfMonth()));
+      var writer = new JSONWriter();
+      writer.configure(MonthDay.class, monthDay -> writer.toJSON(monthDay.getMonth() + "-" + monthDay.getDayOfMonth()));
       var person = new PersonInfo(MonthDay.of(4, 17), new AddressInfo());
-      var json = serializer.toJSON(person);
+      var json = writer.toJSON(person);
       assertEquals("""
           {"birth-day": "APRIL-17", "address": {"international": false}}\
           """,

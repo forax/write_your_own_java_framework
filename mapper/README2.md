@@ -1,6 +1,6 @@
-# Serializing objects from JSON
+# Reading objects from JSON
 
-The aim of class `JSONDeserializer` is to transform JSON objects into Java Beans,
+The aim of class `JSONReader` is to transform JSON objects in textual form into Java Beans,
 or records and JSON array into `java.util.List`.
 
 First, we register `TypeMatcher`s with `addTypeMatcher(typeMatcher)`, that recognize types like records or list and
@@ -9,15 +9,13 @@ Then we call `parseJSON(text, type)` with a JSON text, and a type that will be u
 
 Here is an example using a record
 ```java
-record Person(String name, int age) {
-  public Person {}
-}
+public record Person(String name, int age) {}
 
-var deserializer = new JSONDeserializer();
-deserializer.addTypeMatcher(type -> Optional.of(Utils.erase(type))
+var reader = new JSONReader();
+reader.addTypeMatcher(type -> Optional.of(Utils.erase(type))
     .filter(Class::isRecord)
     .map(Collector::record));
-var person = deserializer.parseJSON("""
+var person = reader.parseJSON("""
     {
       "name": "Ana", "age": 24
     }
@@ -101,7 +99,7 @@ and `endObject(null)`.
 
 ### Collector
 
-A `JSONDeserializer` uses two abstractions, one called a Collector (because it's behavior is close to a
+A `JSONReader` uses two abstractions, one called a Collector (because it's behavior is close to a
 [Stream Collector](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/util/stream/Collector.html)).
 A collector abstract the way to create an object, fill it with values and transform it to another object
 before returning it. In order to propagate the type, it also has a function that return the type of a `key`
@@ -130,9 +128,9 @@ public interface TypeMatcher {
 ```
 
 
-### Creating a JSONDeserializer
+## Let's implement it
 
-1. Let's start small, in the class `JSONDeserializer` write a method `parseJSON(text, class)` that takes
+1. Let's start small, in the class `JSONReader` write a method `parseJSON(text, class)` that takes
    a JSON text, and the class of a Java Beans and returns an instance of the class with
    initialized by calling the setters corresponding to the JSON keys.
    
