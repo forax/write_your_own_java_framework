@@ -93,7 +93,17 @@ final class Utils {
   }
 
   public static Class<?> erase(Type type) {
+    /*
     // TODO use a switch on type here
+    return switch(type) {
+      case Class<?> clazz -> clazz;
+      case ParameterizedType parameterizedType -> parameterizedType.getRawType();
+      case GenericArrayType genericArrayType -> erase(genericArrayType.getGenericComponentType()).arrayType();
+      case TypeVariable<?> typeVariable -> erase(typeVariable.getBounds()[0]);
+      case WildcardType wildcardType -> erase(wildcardType.getLowerBounds()[0]);
+      default -> throw new AssertionError("unknown type " + type.getTypeName());
+    };
+     */
     if (type instanceof Class<?> clazz) {
       return clazz;
     }

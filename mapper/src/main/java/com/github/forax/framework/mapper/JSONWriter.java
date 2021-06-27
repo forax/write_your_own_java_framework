@@ -63,7 +63,23 @@ public final class JSONWriter {
   }
 
   public String toJSON(Object o) {
+    /*
     // TODO use a switch on types when moving to Java 17
+    return switch (o) {
+      case null -> "null";
+      case Boolean value -> "" + value;
+      case Number value -> "" + value;
+      case String value -> "\"" + value + "\"";
+      default -> {
+        var type = o.getClass();
+        var generator = map.get(type);
+        if (generator == null) {
+          generator = GENERATOR_CLASS_VALUE.get(type);
+        }
+        yield generator.generate(this, o);
+      }
+    };
+    */
     if (o == null) {
       return "null";
     }
