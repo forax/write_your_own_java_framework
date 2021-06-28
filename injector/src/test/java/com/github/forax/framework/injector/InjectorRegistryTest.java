@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.beans.PropertyDescriptor;
 import java.lang.annotation.Target;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -160,12 +161,13 @@ public class InjectorRegistryTest {
 
   @Nested
   public class Q4 {
+    public static class A {
+      @Inject
+      public void setValue(String value) {}
+    }
+
     @Test @Tag("Q4")
     public void findInjectablePropertiesOneInjectMethod() {
-      class A {
-        @Inject
-        public void setValue(String value) {}
-      }
       List<PropertyDescriptor> properties = InjectorRegistry.findInjectableProperties(A.class);
       assertAll(
           () -> assertEquals(1, properties.size()),
@@ -175,21 +177,23 @@ public class InjectorRegistryTest {
 
     @Test @Tag("Q4")
     public void findInjectablePropertiesNoInjectMethod() {
-      class A {
+      class B {
         // No @Inject
         public void setValue(String value) {}
       }
-      var properties = InjectorRegistry.findInjectableProperties(A.class);
+
+      var properties = InjectorRegistry.findInjectableProperties(B.class);
       assertEquals(List.of(), properties);
     }
 
     @Test @Tag("Q4")
     public void findInjectablePropertiesNoPublicMethod() {
-      class A {
+      class C {
         @Inject
         private void setValue(String value) {}
       }
-      var properties = InjectorRegistry.findInjectableProperties(A.class);
+
+      var properties = InjectorRegistry.findInjectableProperties(C.class);
       assertEquals(List.of(), properties);
     }
 
@@ -219,18 +223,19 @@ public class InjectorRegistryTest {
       );
     }
 
+    public static class D {
+      @Inject
+      public void setValue1(Double value) {}
+      @Inject
+      public void setValue2(Double value) {}
+    }
+
     @Test @Tag("Q4")
     public void findInjectablePropertiesTwoInjectMethod() throws NoSuchMethodException {
-      class A {
-        @Inject
-        public void setValue1(Double value) {}
-        @Inject
-        public void setValue2(Double value) {}
-      }
-      var properties = InjectorRegistry.findInjectableProperties(A.class);
+      var properties = InjectorRegistry.findInjectableProperties(D.class);
       var methods = Set.of(
-          A.class.getMethod("setValue1", Double.class),
-          A.class.getMethod("setValue2", Double.class)
+          D.class.getMethod("setValue1", Double.class),
+          D.class.getMethod("setValue2", Double.class)
       );
       assertAll(
           () -> assertEquals(2, properties.size()),
@@ -367,10 +372,10 @@ public class InjectorRegistryTest {
 
     public static class B {
       @Inject
-      public B() {}
+      public B(Integer i) {}
 
       @Inject
-      public B(Boolean b) {}
+      public B(String s) {}
     }
 
     @Test @Tag("Q6")
@@ -435,10 +440,12 @@ public class InjectorRegistryTest {
       assertTrue(d instanceof E);
     }
 
-    record Point(int x, int y) {}
-    static class Circle {
+    public record Point(int x, int y) {
+      public Point() { this(0, 0); }
+    }
+    public static class Circle {
       private final Point center;
-      private String name;
+      private Point point;
 
       @Inject
       public Circle(Point center) {
@@ -446,22 +453,26 @@ public class InjectorRegistryTest {
       }
 
       @Inject
-      public void setName(String name) {
-        this.name = name;
+      public void setPoint(Point point) {
+        this.point = point;
       }
     }
 
     @Test @Tag("Q6")
     public void exampleWithAll() {
       var registry = new InjectorRegistry();
-      registry.registerInstance(Point.class, new Point(0, 0));
-      registry.registerProvider(String.class, () -> "hello");
+      registry.registerInstance(String.class, "hello");
+      registry.registerProvider(Point.class, Point::new);
       registry.registerProviderClass(Circle.class, Circle.class);
 
+      var string = registry.lookupInstance(String.class);
+      var point = registry.lookupInstance(Point.class);
       var circle = registry.lookupInstance(Circle.class);
       assertAll(
+          () -> assertEquals("hello", string),
+          () -> assertEquals(new Point(0, 0), point),
           () -> assertEquals(new Point(0, 0), circle.center),
-          () -> assertEquals("hello", circle.name)
+          () -> assertEquals(new Point(0, 0), circle.point)
       );
     }
   }

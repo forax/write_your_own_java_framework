@@ -36,7 +36,7 @@ There are several ways to configure an injector, it can be done
   an annotation processor to alleviate that issue.
 - using an API to explicitly register the recipe to get the dependency.
 
-We will only implement the explicit configuration using 3 methods `register*` (see below).
+We will implement tho later configurations, the classpath scanning and the explicit API.
 
 
 ### Our injector
@@ -46,6 +46,8 @@ The class `InjectorRegistry` has 4 methods
 - `registerInstance(type, object)` register the only instance (singleton) to always return for a type
 - `registerProvider(type, supplier)` register a supplier to call to get the instance for a type
 - `registerProviderClass(type, class)` register a bean class that will be instantiated for a type
+- `scanClassPathPackageForAnnotations(class)` that register as provider class all classes of a package
+  containing the class taken as parameter.
 
 As a example, suppose we have a record `Point` and a bean `Circle` with a constructor `Circle` annotated
 with `@Inject` and a setter `setName` of `String` also annotated with `@Inject`.
@@ -153,4 +155,7 @@ The unit tests are in [InjectorRegistryTest.java](src/test/java/com/github/forax
          we can verify that the providers of the parameter of the constructor are available
          before creating any instances. This requires to register the provider class
          in a reverse topological order guaranteeing that there is no cycle.
+
+
+
    
