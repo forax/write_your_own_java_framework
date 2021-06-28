@@ -36,7 +36,7 @@ There are several ways to configure an injector, it can be done
   an annotation processor to alleviate that issue.
 - using an API to explicitly register the recipe to get the dependency.
 
-We will implement tho later configurations, the classpath scanning and the explicit API.
+We will implement the explicit API while the classpath scanning is implemented in [the part 2](README2.md).
 
 
 ### Our injector
@@ -49,7 +49,7 @@ The class `InjectorRegistry` has 4 methods
 - `scanClassPathPackageForAnnotations(class)` that register as provider class all classes of a package
   containing the class taken as parameter.
 
-As a example, suppose we have a record `Point` and a bean `Circle` with a constructor `Circle` annotated
+As an example, suppose we have a record `Point` and a bean `Circle` with a constructor `Circle` annotated
 with `@Inject` and a setter `setName` of `String` also annotated with `@Inject`.
 
 ```java
