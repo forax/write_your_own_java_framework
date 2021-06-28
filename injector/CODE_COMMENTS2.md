@@ -1,21 +1,9 @@
-package com.github.forax.framework.injector;
+# Code comments
 
-import java.io.IOException;
-import java.lang.reflect.Modifier;
-import java.net.URISyntaxException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Stream;
 
-public class AnnotationScanner {
+### Q1
+
+```java
   static Stream<Class<?>> findAllClasses(String packageName, ClassLoader classLoader) {
     var urls = Utils2.getResources(packageName.replace('.', '/'), classLoader);
     var urlList = Collections.list(urls);
@@ -38,7 +26,12 @@ public class AnnotationScanner {
           }
         });
   }
+```
 
+
+### Q2
+
+```java
   private static boolean isValidClass(Class<?> clazz) {
     return !clazz.isInterface()
         && !Modifier.isAbstract(clazz.getModifiers())
@@ -53,7 +46,12 @@ public class AnnotationScanner {
             .flatMap(Arrays::stream)
             .anyMatch(executable -> executable.isAnnotationPresent(Inject.class));
   }
+```
 
+
+### Q3
+
+```java
   private static void addDependenciesFirst(Class<?> type, LinkedHashSet<Class<?>> set, HashSet<Class<?>> visited) {
     if (!visited.add(type)) {
       return;
@@ -70,7 +68,12 @@ public class AnnotationScanner {
         .flatMap(constructor -> Arrays.stream(constructor.getParameterTypes()))
         .toList();
   }
+```
 
+
+### Q4
+
+```java
   static Set<Class<?>> findDependenciesInOrder(List<Class<?>> classes) {
     var set = new LinkedHashSet<Class<?>>();
     var visited = new HashSet<Class<?>>();
@@ -86,7 +89,12 @@ public class AnnotationScanner {
     }
     return set;
   }
+```
 
+
+### Q5
+
+```java
   private static <T> void registerProviderClass(InjectorRegistry registry, Class<T> clazz) {
     registry.registerProviderClass(clazz, clazz);
   }
@@ -103,4 +111,4 @@ public class AnnotationScanner {
     var dependencies = findDependenciesInOrder(classes);
     dependencies.forEach(clazz -> registerProviderClass(registry, clazz));
   }
-}
+```
