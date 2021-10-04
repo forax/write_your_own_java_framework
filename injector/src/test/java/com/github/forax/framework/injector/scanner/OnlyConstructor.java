@@ -2,7 +2,11 @@ package com.github.forax.framework.injector.scanner;
 
 import com.github.forax.framework.injector.Inject;
 
-public class OnlyConstructor {
+import java.util.Objects;
+
+public record OnlyConstructor(Dependency dependency) {
   @Inject
-  public OnlyConstructor(Dependency dependency) {}
+  public OnlyConstructor {
+    Objects.requireNonNull(dependency);
+  }
 }

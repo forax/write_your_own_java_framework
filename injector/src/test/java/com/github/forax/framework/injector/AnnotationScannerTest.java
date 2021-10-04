@@ -147,7 +147,25 @@ public class AnnotationScannerTest {
   @Nested
   public class Q5 {
     @Test @Tag("Q5")
-    public void scanPackageForAnnotations() {
+    public void scanPackageForAnnotationsOnlyConstructor() {
+      var registry = new InjectorRegistry();
+      AnnotationScanner.scanClassPathPackageForAnnotations(registry, Dummy.class);
+
+      var onlyConstructor = registry.lookupInstance(OnlyConstructor.class);
+      assertNotNull(onlyConstructor.dependency());
+    }
+
+    @Test @Tag("Q5")
+    public void scanPackageForAnnotationsOnlySetter() {
+      var registry = new InjectorRegistry();
+      AnnotationScanner.scanClassPathPackageForAnnotations(registry, Dummy.class);
+
+      var onlySetter = registry.lookupInstance(OnlySetter.class);
+      assertNotNull(onlySetter.getDependency());
+    }
+
+    @Test @Tag("Q5")
+    public void scanPackageForAnnotationsMixedWithAnInstance() {
       var registry = new InjectorRegistry();
       AnnotationScanner.scanClassPathPackageForAnnotations(registry, Dummy.class);
       registry.registerInstance(String.class, "hello");

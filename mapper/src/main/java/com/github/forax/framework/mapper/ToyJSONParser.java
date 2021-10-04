@@ -12,7 +12,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * A Toy JSON parser that do not recognized correctly, unicode characters, escaped strings
+ * A Toy JSON parser that do not recognize correctly, unicode characters, escaped strings
  * and i'm sure many more features.
  *
  * @see #parse(String, JSONVisitor)

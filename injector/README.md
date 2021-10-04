@@ -21,7 +21,7 @@ provides 3 ways to implicitly get an instance of a class
   this methods bypass the default security model of Java using **deep reflection**, relying on either
   not having a module declared or the package being open in the module-info.java. Because of that,
   this is not the recommended way of doing injection.
-  
+
 We will only implement the constructor based and setter based dependency injection.
 
 
@@ -46,8 +46,6 @@ The class `InjectorRegistry` has 4 methods
 - `registerInstance(type, object)` register the only instance (singleton) to always return for a type
 - `registerProvider(type, supplier)` register a supplier to call to get the instance for a type
 - `registerProviderClass(type, class)` register a bean class that will be instantiated for a type
-- `scanClassPathPackageForAnnotations(class)` that register as provider class all classes of a package
-  containing the class taken as parameter.
 
 As an example, suppose we have a record `Point` and a bean `Circle` with a constructor `Circle` annotated
 with `@Inject` and a setter `setName` of `String` also annotated with `@Inject`.
@@ -77,14 +75,14 @@ We can register a class `Circle.class` (the second parameter), that will be inst
 is requested
 
 ```java
-var registry = new Registry();
-registry.registerInstance(Point.class, new Point(0, 0));
-registry.registerProvider(String.class, () -> "hello");
-registry.registerProviderClass(Circle.class, Circle.class);
+var registry = new InjectorRegistry();
+    registry.registerInstance(Point.class, new Point(0, 0));
+    registry.registerProvider(String.class, () -> "hello");
+    registry.registerProviderClass(Circle.class, Circle.class);
 
-var circle = registry.lookupInstance(Circle.class);
-System.out.println(circle.center);  // Point(0, 0)
-System.out.println(circle.name);  // hello    
+    var circle = registry.lookupInstance(Circle.class);
+    System.out.println(circle.center);  // Point(0, 0)
+    System.out.println(circle.name);  // hello    
 ```
 
 
@@ -97,16 +95,16 @@ The unit tests are in [InjectorRegistryTest.java](src/test/java/com/github/forax
    a type. It is impossible to register two instances for the same type and `lookupInstance(type)` should
    throw an exception if no instance have been registered for a type.
    Then check that the tests in the nested class "Q1" all pass.
-   
+
    Note: for now, the instance does not have to be an instance of the type `type`.
-         You can use [Map.putIfAbsent()](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/util/Map.html#putIfAbsent(K,V))
-         to detect if there is already a pair with the same key in the `Map` in one call.
+   You can use [Map.putIfAbsent()](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/util/Map.html#putIfAbsent(K,V))
+   to detect if there is already a pair with the same key in the `Map` in one call.
 
 
 2. We want to enforce that the instance has to be an instance of the type taken as parameter.
    For that, declare a `T` and say that the type of the `Class`and the type of the instance is the same.
    Then use the same trick for `lookupInstance(type)` and check that the tests in the nested class "Q2" all pass.
-   
+
    Note: inside `lookupInstance(type)`, now that we now that the instance we return has to be
    an instance of the type, we can use
    [Class.cast()](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/Class.html#cast(java.lang.Object))
@@ -119,7 +117,7 @@ The unit tests are in [InjectorRegistryTest.java](src/test/java/com/github/forax
    but only one that stores suppliers.
    Add the method `registerProvider(type, supplier)` and modify your impelmentation to support it.
    Then check that the tests in the nested class "Q3" all pass.
-   
+
 
 4. In order to implement the injection using setters, we find need to find all the
    [Bean properties](../COMPANION.md#java-bean-and-beaninfo)
@@ -131,7 +129,7 @@ The unit tests are in [InjectorRegistryTest.java](src/test/java/com/github/forax
 
    Note: There is a method `Utils.beanInfo()`.
 
-  
+
 5. We want to add a method `registerProviderClass(type, providerClass)` that takes a type and a class,
    the `providerClass` implementing that type and register a recipe that create a new instance of
    `providerClass` by calling the default constructor. This instance is initialized by calling all the
@@ -150,11 +148,11 @@ The unit tests are in [InjectorRegistryTest.java](src/test/java/com/github/forax
    annotated with `@Inject` and if not call the default constructor.
    Modify the code of `registerProviderClass(type, providerClass)` to support constructor
    injection. Then check that the tests in the nested class "Q6" all pass.
-   
+
    Note: that unlike with setters where the provider is ask when needed, with a constructor,
-         we can verify that the providers of the parameter of the constructor are available
-         before creating any instances. This requires to register the provider class
-         in a reverse topological order guaranteeing that there is no cycle.
+   we can verify that the providers of the parameter of the constructor are available
+   before creating any instances. This requires to register the provider class
+   in a reverse topological order guaranteeing that there is no cycle.
 
 
 
