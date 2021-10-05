@@ -6,17 +6,17 @@ The idea is to implement an object, the `JSONWriter`, that is able to convert an
 A `JSONWriter` is able to convert
 - basic JSON type like boolean, int or String
 - can be configured to handle specific type like `MonthDay` of `java.time`
-- recursive types, types composed of other types, likes Java Beans or records 
+- recursive types, types composed of other types, likes Java Beans or records
 
 Here is an example of a `Person` defined as a record, with the `Address` defined as a bean.
 
 ```java
 class Address {
-  private boolean international;
-  
-  public boolean isInternational() {
-    return international;
-  }
+   private boolean international;
+
+   public boolean isInternational() {
+      return international;
+   }
 }
 record Person(@JSONProperty("birth-day") MonthDay birthday, Address address) { }
 ```
@@ -26,8 +26,7 @@ and calls `toJSON()` to get the corresponding JSON text.
 
 ```java
 var writer = new JSONWriter();
-writer.configure(MonthDay.class,
-    monthDay -> writer.toJSON(monthDay.getMonth() + "-" + monthDay.getDayOfMonth()));
+writer.configure(MonthDay.class, monthDay -> writer.toJSON(monthDay.getMonth() + "-" + monthDay.getDayOfMonth()));
 
 var person = new Person(MonthDay.of(4, 17), new Address());
 var json = writer.toJSON(person);  // {"birth-day": "APRIL-17", "address": {"international": false}}
@@ -48,7 +47,7 @@ The unit tests are in [JSONWriterTest.java](src/test/java/com/github/forax/frame
    Then check that the tests in the nested class "Q2" all pass.
 
    Note: the method `Utils.beanInfo()` already provides a way to get the `BeanInfo` of a class.
-         the method `Utils.invoke()` deals with the exception correctly when calling a `Method`.
+   the method `Utils.invoke()` deals with the exception correctly when calling a `Method`.
 
 3. The problem with the current solution is that the `BeanInfo` and the properties are computed each times
    even if the properties of a class are always the same.
@@ -61,8 +60,8 @@ The unit tests are in [JSONWriterTest.java](src/test/java/com/github/forax/frame
    - either it's a primitive those only need the object to generate the JSON text
    - or it's a bean type, those need the object, and the writer to recursively call `writer.toJSON()`
      on the properties
-   Thus to represent the computation, we can declare a private functional interface `Generator` that takes
-   a `JSONWriter` and an `Object` as parameter.
+     Thus to represent the computation, we can declare a private functional interface `Generator` that takes
+     a `JSONWriter` and an `Object` as parameter.
    ```java
    private interface Generator {
      String generate(JSONWriter writer, Object bean);
@@ -75,7 +74,7 @@ The unit tests are in [JSONWriterTest.java](src/test/java/com/github/forax/frame
 5. Adds a method `configure()` that takes a `Class` and a lambda that takes an instance of that class
    and returns a string and modify `toJSON()` to work with instances of the configured classes.
    Internally, a HashMap that associates a class to the computation of the JSON text using the lambda.
-   Then check that the tests in the nested class "Q4" all pass.
+   Then check that the tests in the nested class "Q5" all pass.
 
    **Note**: the lambda takes a value and returns a value thus it can be typed by a `java.util.function.Function`.
    The type of the class, and the type of the first parameter of the lambda are the same,
@@ -93,17 +92,17 @@ The unit tests are in [JSONWriterTest.java](src/test/java/com/github/forax/frame
    ```
    To support that, add a check if the getter is annotated with the annotation `@JSONProperty`
    and in that case, use the name provided by the annotation instead of the name of the property.
-   Then check that the tests in the nested class "Q5" all pass
+   Then check that the tests in the nested class "Q6" all pass
 
 7. Modify the code to support not only Java beans but also [records](../COMPANION.md#record) by refactoring
    your code to have two private methods  that takes a Class and returns either the properties of the bean
    or the properties of the records.
    ```java
-   private static Stream<PropertyDescriptor> beanProperties(Class<?> type) {
+   private static List<PropertyDescriptor> beanProperties(Class<?> type) {
      // TODO
    }
 
-   private static Stream<PropertyDescriptor> recordProperties(Class<?> type) {
+   private static List<PropertyDescriptor> recordProperties(Class<?> type) {
      // TODO
    }
    ```
