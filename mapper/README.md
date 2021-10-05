@@ -68,7 +68,7 @@ The unit tests are in [JSONWriterTest.java](src/test/java/com/github/forax/frame
      String generate(JSONWriter writer, Object bean);
    }
    ```
-   Change your code to use `ClassValue<Gneerator>` instead of a `ClassValue<PropertyDescriptor[]>,
+   Change your code to use `ClassValue<Generator>` instead of a `ClassValue<PropertyDescriptor[]>`,
    and modify the implementation of the method `toJSON()` accordingly.
    All the tests from the previous questions should still pass.
 
