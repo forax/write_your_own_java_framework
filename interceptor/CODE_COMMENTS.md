@@ -6,7 +6,7 @@ We declare `interceptorMap` as a `HashMap`, given that it is declared `private`,
 instead of the interface `Map` here, because it's not visible from the outside.
 `addInterceptor(annotationClass, interceptor)` takes a `Class<? extends Annotation>` as first parameter so
 if the class is not an annotation, it will not compile.
-We also check that the argument are not `null`, storing null is a sure way to go to hell.
+We also check that the argument are not `null`, storing nulls is a sure way to go to hell.
 
 ```java
   private final HashMap<Class<?>, Interceptor> interceptorMap = new HashMap<>();
