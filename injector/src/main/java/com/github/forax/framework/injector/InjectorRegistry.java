@@ -27,6 +27,8 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static java.util.Objects.requireNonNull;
+
 public final class InjectorRegistry {
   public InjectorRegistry() { }
 
@@ -75,36 +77,36 @@ public final class InjectorRegistry {
   private void initInstance(Object instance, List<PropertyDescriptor> properties) {
     for(var property: properties) {
       var setter = property.getWriteMethod();
-      var propertyType = property.getPropertyType();
-      Utils.invokeMethod(instance, setter, lookupInstance(propertyType));
+      var value = lookupInstance(property.getPropertyType());
+      Utils.invokeMethod(instance, setter, value);
     }
   }
 
-  private static Optional<Constructor<?>> injectableConstructor(Class<?> type) {
-    var constructors = Arrays.stream(type.getConstructors())
-        .filter(c -> c.isAnnotationPresent(Inject.class))
+  private static Optional<Constructor<?>> findConstructorAnnotatedWithInject(Class<?> providerClass) {
+    var constructors =  Arrays.stream(providerClass.getConstructors())
+        .filter(constructor -> constructor.isAnnotationPresent(Inject.class))
         .toList();
-    return switch (constructors.size()) {
+    return switch(constructors.size()) {
       case 0 -> Optional.empty();
       case 1 -> Optional.of(constructors.get(0));
-      default -> throw new IllegalStateException(type.getName() + " has more than one public constructor annotated with @Inject");
+      default -> throw new IllegalStateException("more than one constructor annotated with @Inject in " + providerClass.getName());
     };
   }
 
   public <T> void registerProviderClass(Class<T> type, Class<? extends T> providerClass) {
-    Objects.requireNonNull(type);
-    Objects.requireNonNull(providerClass);
-    var constructor = injectableConstructor(providerClass)
-        .orElseGet(() -> Utils.defaultConstructor(providerClass));
-    var providers = Arrays.stream(constructor.getParameterTypes())
-        .map(this::lookupProvider)
-        .toList();
+    requireNonNull(type);
+    requireNonNull(providerClass);
     var properties = findInjectableProperties(providerClass);
+    var constructor = findConstructorAnnotatedWithInject(providerClass)
+        .orElseGet(() -> Utils.defaultConstructor(providerClass));
+    var parameterTypes = constructor.getParameterTypes();
     registerProvider(type, () -> {
-      var args = providers.stream().map(Supplier::get).toArray();
-      var instance = Utils.newInstance(constructor, args);
+      Object[] args = Arrays.stream(parameterTypes)
+          .map(this::lookupInstance)
+          .toArray();
+      var instance = type.cast(Utils.newInstance(constructor, args));
       initInstance(instance, properties);
-      return type.cast(instance);
+      return instance;
     });
   }
 }
