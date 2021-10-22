@@ -211,7 +211,7 @@ public class ORMTest {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
       transaction(dataSource, () -> {
-        ORM.createTable(Furniture.class);
+        createTable(Furniture.class);
         var set = new HashSet<Column>();
         var connection = ORM.currentConnection();
         var metaData = connection.getMetaData();
@@ -330,7 +330,7 @@ public class ORMTest {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
       transaction(dataSource, () -> {
-        ORM.createTable(Company.class);
+        createTable(Company.class);
         var set = new HashSet<Column>();
         var connection = ORM.currentConnection();
         var metaData = connection.getMetaData();
@@ -417,7 +417,7 @@ public class ORMTest {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
       transaction(dataSource, () -> {
-        ORM.createTable(Point.class);
+        createTable(Point.class);
         var set = new HashSet<Column>();
         var connection = ORM.currentConnection();
         var metaData = connection.getMetaData();
@@ -448,7 +448,7 @@ public class ORMTest {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
       transaction(dataSource, () -> {
-        ORM.createTable(User.class);
+        createTable(User.class);
         var set = new HashSet<Column>();
         var connection = ORM.currentConnection();
         var metaData = connection.getMetaData();
@@ -523,26 +523,24 @@ public class ORMTest {
   @Nested
   public class Q6 {
     @Test @Tag("Q6")
-    @SuppressWarnings("resource")
     public void testFindAllEmptyTable() throws SQLException {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
       transaction(dataSource, () -> {
-        ORM.createTable(Person.class);
+        createTable(Person.class);
         interface PersonRepository extends Repository<Person, Long> {}
-        var repository = ORM.createRepository(PersonRepository.class);
+        var repository = createRepository(PersonRepository.class);
         var persons = repository.findAll();
         assertEquals(List.of(), persons);
       });
     }
 
     @Test @Tag("Q6")
-    @SuppressWarnings("resource")
     public void testFindAllOutsideATransaction() throws SQLException {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
       interface PersonRepository extends Repository<Person, Long> {}
-      var repository = ORM.createRepository(PersonRepository.class);
+      var repository = createRepository(PersonRepository.class);
       assertThrows(IllegalStateException.class, repository::findAll);
     }
 
@@ -614,7 +612,7 @@ public class ORMTest {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
       transaction(dataSource, () -> {
-        ORM.createTable(Person.class);
+        createTable(Person.class);
         var connection = ORM.currentConnection();
         var update = """
           INSERT INTO PERSON (ID, NAME) VALUES (42, 'scott tiger');
@@ -642,9 +640,9 @@ public class ORMTest {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
       interface PersonRepository extends Repository<Person, Long> {}
-      var repository = ORM.createRepository(PersonRepository.class);
+      var repository = createRepository(PersonRepository.class);
       transaction(dataSource, () -> {
-        ORM.createTable(Person.class);
+        createTable(Person.class);
         var connection = ORM.currentConnection();
         var update = """
           INSERT INTO PERSON (ID, NAME) VALUES (1, 'iga');
@@ -667,13 +665,29 @@ public class ORMTest {
   class Q8 {
 
     @Test @Tag("Q8")
-    public void testSave() throws SQLException {
+    public void testSaveOnePerson() throws SQLException {
+      interface PersonRepository extends Repository<Person, Long> {}
+
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      interface PersonRepository extends Repository<Person, Long> {}
-      var repository = ORM.createRepository(PersonRepository.class);
+      var repository = createRepository(PersonRepository.class);
       transaction(dataSource, () -> {
-        ORM.createTable(Person.class);
+        createTable(Person.class);
+        repository.save(new Person(1L, "Bob"));
+        var all = repository.findAll();
+        assertEquals(List.of(new Person(1L, "Bob")), all);
+      });
+    }
+
+    @Test @Tag("Q8")
+    public void testSaveSeveralPersons() throws SQLException {
+      interface PersonRepository extends Repository<Person, Long> {}
+
+      var dataSource = new JdbcDataSource();
+      dataSource.setURL("jdbc:h2:mem:test");
+      var repository = createRepository(PersonRepository.class);
+      transaction(dataSource, () -> {
+        createTable(Person.class);
         LongStream.range(0, 5)
             .mapToObj(i -> new Person(i, "person" + i))
             .forEach(repository::save);
@@ -709,12 +723,13 @@ public class ORMTest {
 
     @Test @Tag("Q9")
     public void testSaveReturnValue() throws SQLException {
+      interface DataRepository extends Repository<Data, String> {}
+
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      interface DataRepository extends Repository<Data, String> {}
-      var repository = ORM.createRepository(DataRepository.class);
+      var repository = createRepository(DataRepository.class);
       transaction(dataSource, () -> {
-        ORM.createTable(Data.class);
+        createTable(Data.class);
         var data1 = repository.save(new Data());
         assertEquals("1", data1.id);
         var data2 = repository.save(new Data());
@@ -774,9 +789,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = ORM.createRepository(AccountRepository.class);
+      var repository = createRepository(AccountRepository.class);
       transaction(dataSource, () -> {
-        ORM.createTable(Account.class);
+        createTable(Account.class);
         repository.save(new Account(1, 867));
         repository.save(new Account(10, -687));
         repository.save(new Account(10, 501));
@@ -841,8 +856,55 @@ public class ORMTest {
 
   @Nested
   public class Q11 {
+    public static final class NoId { }
 
     @Test @Tag("Q11")
+    public void testFindById() throws SQLException {
+      interface PersonRepository extends Repository<Person, Long> {}
+
+      var dataSource = new JdbcDataSource();
+      dataSource.setURL("jdbc:h2:mem:test");
+      var repository = createRepository(PersonRepository.class);
+      transaction(dataSource, () -> {
+        createTable(Person.class);
+        repository.save(new Person(1L, "iga"));
+        repository.save(new Person(2L, "biva"));
+        var person = repository.findById(2L).orElseThrow();
+        assertEquals(new Person(2L, "biva"), person);
+      });
+    }
+
+    @Test @Tag("Q11")
+    public void testFindByIdNotFound() throws SQLException {
+      interface PersonRepository extends Repository<Person, Long> {}
+
+      var dataSource = new JdbcDataSource();
+      dataSource.setURL("jdbc:h2:mem:test");
+      var repository = createRepository(PersonRepository.class);
+      transaction(dataSource, () -> {
+        createTable(Person.class);
+        repository.save(new Person(1L, "iga"));
+        repository.save(new Person(2L, "biva"));
+        var person = repository.findById(888L);
+        assertTrue(person.isEmpty());
+      });
+    }
+
+    @Test @Tag("Q11")
+    public void testRepositoryClassWithNoPrimaryKey() throws SQLException {
+      interface VoidRepository extends Repository<NoId, Long> { }
+
+      var dataSource = new JdbcDataSource();
+      dataSource.setURL("jdbc:h2:mem:test");
+      transaction(dataSource, () -> assertThrows(IllegalStateException.class, () -> createRepository(VoidRepository.class)));
+    }
+  }
+
+
+  @Nested
+  public class Q12 {
+
+    @Test @Tag("Q12")
     public void testUserDefinedQueryAccount() throws SQLException {
       interface PersonRepository extends Repository<Account, Integer> {
         @Query("SELECT * FROM ACCOUNT")
@@ -851,9 +913,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = ORM.createRepository(PersonRepository.class);
+      var repository = createRepository(PersonRepository.class);
       transaction(dataSource, () -> {
-        ORM.createTable(Account.class);
+        createTable(Account.class);
         repository.save(new Account(1, 123));
         repository.save(new Account(2, 567));
         var list = repository.findAllAccount();
@@ -864,7 +926,7 @@ public class ORMTest {
       });
     }
 
-    @Test @Tag("Q11")
+    @Test @Tag("Q12")
     public void testUserDefinedQueryPerson() throws SQLException {
       interface PersonRepository extends Repository<Person, Long> {
         @Query("SELECT * FROM PERSON WHERE name = ?")
@@ -873,9 +935,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = ORM.createRepository(PersonRepository.class);
+      var repository = createRepository(PersonRepository.class);
       transaction(dataSource, () -> {
-        ORM.createTable(Person.class);
+        createTable(Person.class);
         repository.save(new Person(1L, "Bob"));
         repository.save(new Person(2L, "Ana"));
         repository.save(new Person(3L, "John"));
@@ -885,7 +947,7 @@ public class ORMTest {
       });
     }
 
-    @Test @Tag("Q11")
+    @Test @Tag("Q12")
     public void testQuerySeveralParameters() throws SQLException {
       interface UserRepository extends Repository<Pet, Long> {
         @Query("SELECT * FROM PET WHERE name = ? AND age >= ?")
@@ -911,50 +973,6 @@ public class ORMTest {
 
   }
 
-  @Nested
-  public class Q12 {
-
-    @Test @Tag("Q12")
-    public void testFindById() throws SQLException {
-      interface PersonRepository extends Repository<Person, Long> {}
-
-      var dataSource = new JdbcDataSource();
-      dataSource.setURL("jdbc:h2:mem:test");
-      var repository = ORM.createRepository(PersonRepository.class);
-      transaction(dataSource, () -> {
-        ORM.createTable(Person.class);
-        repository.save(new Person(1L, "iga"));
-        repository.save(new Person(2L, "biva"));
-        var person = repository.findById(2L).orElseThrow();
-        assertEquals(new Person(2L, "biva"), person);
-      });
-    }
-
-    @Test @Tag("Q12")
-    public void testFindByIdNotFound() throws SQLException {
-      interface PersonRepository extends Repository<Person, Long> {}
-
-      var dataSource = new JdbcDataSource();
-      dataSource.setURL("jdbc:h2:mem:test");
-      var repository = ORM.createRepository(PersonRepository.class);
-      transaction(dataSource, () -> {
-        ORM.createTable(Person.class);
-        repository.save(new Person(1L, "iga"));
-        repository.save(new Person(2L, "biva"));
-        var person = repository.findById(888L);
-        assertTrue(person.isEmpty());
-      });
-    }
-
-    @Test @Tag("Q12")
-    public void testRepositoryClassWithNoPrimaryKey() throws SQLException {
-      interface VoidRepository extends Repository<Void, Long> { }
-
-      var dataSource = new JdbcDataSource();
-      dataSource.setURL("jdbc:h2:mem:test");
-      transaction(dataSource, () -> assertThrows(IllegalStateException.class, () -> createRepository(VoidRepository.class)));
-    }
-  }
 
   @Nested
   class Q13 {
@@ -967,9 +985,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = ORM.createRepository(PersonRepository.class);
+      var repository = createRepository(PersonRepository.class);
       transaction(dataSource, () -> {
-        ORM.createTable(Account.class);
+        createTable(Account.class);
         repository.save(new Account(1, 123));
         repository.save(new Account(2, 567));
         var account = repository.findByBalance("123").orElseThrow();
@@ -985,9 +1003,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = ORM.createRepository(PersonRepository.class);
+      var repository = createRepository(PersonRepository.class);
       transaction(dataSource, () -> {
-        ORM.createTable(Person.class);
+        createTable(Person.class);
         repository.save(new Person(1L, "iga"));
         repository.save(new Person(2L, "biva"));
         var person = repository.findByName("biva").orElseThrow();

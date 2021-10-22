@@ -151,7 +151,7 @@ public final class ORM {
     return instance;
   }
 
-  private static List<Object> find(Connection connection, String sqlQuery, BeanInfo beanInfo, Constructor<?> constructor, Object... args) throws SQLException {
+  private static List<Object> findAll(Connection connection, String sqlQuery, BeanInfo beanInfo, Constructor<?> constructor, Object... args) throws SQLException {
     var list = new ArrayList<>();
     try(var statement = connection.prepareStatement(sqlQuery)) {
       //System.err.println(sqlQuery);
@@ -168,39 +168,6 @@ public final class ORM {
       }
     }
     return list;
-  }
-
-  private static Object save(Connection connection, String tableName, BeanInfo beanInfo, PropertyDescriptor idProperty, Object bean) throws SQLException {
-    var values = new StringJoiner(", ", "(", ")");
-    var columns = new StringJoiner(", ", "(", ")");
-    for(var property: beanInfo.getPropertyDescriptors()) {
-      var propertyName = property.getName();
-      if (propertyName.equals("class")) {
-        continue;
-      }
-      values.add("?");
-      columns.add(propertyName);
-    }
-    var sqlQuery = "MERGE INTO " + tableName + " " + columns + " VALUES " + values + ";";
-
-    System.err.println(sqlQuery);
-    try(var statement = connection.prepareStatement(sqlQuery, Statement.RETURN_GENERATED_KEYS)) {
-      var index = 1;
-      for(var property: beanInfo.getPropertyDescriptors()) {
-        if (property.getName().equals("class")) {
-          continue;
-        }
-        statement.setObject(index++, Utils.invokeMethod(bean, property.getReadMethod()));
-      }
-      statement.executeUpdate();
-      try(var resultSet = statement.getGeneratedKeys()) {
-        if (resultSet.next()) {
-          var key = resultSet.getObject( 1);
-          Utils.invokeMethod(bean, idProperty.getWriteMethod(), key);
-        }
-      }
-    }
-    return bean;
   }
 
   private static Class<?> findBeanType(Class<?> repositoryInterface) {
@@ -233,27 +200,34 @@ public final class ORM {
   public static <T, ID, R extends Repository<T, ID>> R createRepository(Class<? extends R> type) {
     var beanType = findBeanType(type);
     var beanInfo = Utils.beanInfo(beanType);
-    var idProperty = findId(beanType, beanInfo);
     var tableName = findTableName(beanType);
     var constructor = Utils.defaultConstructor(beanType);
+    var idProperty = findId(beanType, beanInfo);
     return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] { type }, (proxy, method, args) -> {
       var connection = currentConnection();
       var name = method.getName();
       try {
         return switch(name) {
-          case "findAll" -> find(connection, "SELECT * FROM " + tableName, beanInfo, constructor);
-          case "findById" -> find(connection, "SELECT * FROM " + tableName +" WHERE " + idProperty.getName() + " = ?" , beanInfo, constructor, args[0]).stream().findFirst();
-          case "save" -> save(connection, tableName, beanInfo, idProperty, args[0]);
+          case "findAll" -> {
+            var sqlQuery = "SELECT * FROM " + tableName;
+            yield findAll(connection, sqlQuery, beanInfo, constructor);
+          }
+          case "findById" -> {
+            var sqlQuery = "SELECT * FROM " + tableName + " WHERE " + idProperty.getName() + " = ?";
+            yield findAll(connection, sqlQuery, beanInfo, constructor, args[0]).stream().findFirst();
+          }
+          case "save" -> save(connection, tableName, beanInfo, args[0], idProperty);
           case "equals", "hashCode", "toString" -> throw new UnsupportedOperationException("" + method);
           default -> {
             var query = method.getAnnotation(Query.class);
             if (query != null) {
-              yield find(connection, query.value(), beanInfo, constructor, args);
+              yield findAll(connection, query.value(), beanInfo, constructor, args);
             }
             if (name.startsWith("findBy")) {
               var propertyName = Introspector.decapitalize(name.substring(6));
               var property = findProperty(beanType, beanInfo, propertyName);
-              yield find(connection, "SELECT * FROM " + tableName +" WHERE " + property.getName() + " = ?", beanInfo, constructor, args[0]).stream().findFirst();
+              var sqlQuery = "SELECT * FROM " + tableName + " WHERE " + property.getName() + " = ?";
+              yield findAll(connection, sqlQuery, beanInfo, constructor, args[0]).stream().findFirst();
             }
             throw new IllegalStateException("unknown method " + method);
           }
@@ -262,5 +236,42 @@ public final class ORM {
         throw new UncheckedSQLException(e);
       }
     }));
+  }
+
+  private static String createSaveQuery(String tableName, BeanInfo beanInfo) {
+    var values = new StringJoiner(", ", "(", ")");
+    var columns = new StringJoiner(", ", "(", ")");
+    for(var property: beanInfo.getPropertyDescriptors()) {
+      var propertyName = property.getName();
+      if (propertyName.equals("class")) {
+        continue;
+      }
+      values.add("?");
+      columns.add(propertyName);
+    }
+    return "MERGE INTO " + tableName + " " + columns + " VALUES " + values + ";";
+  }
+
+  private static Object save(Connection connection, String tableName, BeanInfo beanInfo, Object bean, PropertyDescriptor idProperty) throws SQLException {
+    String sqlQuery = createSaveQuery(tableName, beanInfo);
+    System.err.println(sqlQuery);
+
+    try(var statement = connection.prepareStatement(sqlQuery, Statement.RETURN_GENERATED_KEYS)) {
+      var index = 1;
+      for(var property: beanInfo.getPropertyDescriptors()) {
+        if (property.getName().equals("class")) {
+          continue;
+        }
+        statement.setObject(index++, Utils.invokeMethod(bean, property.getReadMethod()));
+      }
+      statement.executeUpdate();
+      try(var resultSet = statement.getGeneratedKeys()) {
+        if (resultSet.next()) {
+          var key = resultSet.getObject( 1);
+          Utils.invokeMethod(bean, idProperty.getWriteMethod(), key);
+        }
+      }
+    }
+    return bean;
   }
 }
