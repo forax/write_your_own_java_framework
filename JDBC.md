@@ -14,7 +14,7 @@
 
 ## DataSource, Connection and Transaction
 
-[DataSource](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/javax/sql/DataSource.html)
+[DataSource](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/javax/sql/DataSource.html)
 
 
 ```java
@@ -27,7 +27,7 @@ DataSource dataSource = new JdbcDataSource();
 dataSource.setURL("jdbc:h2:mem:test");
 ```
 
-[Connection](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Connection.html)
+[Connection](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Connection.html)
 
 ```java
 try(Connection connection = dataSource.getConnection()) {
@@ -37,9 +37,9 @@ try(Connection connection = dataSource.getConnection()) {
 
 ### Transaction
 
-[Connection.setAutoCommit](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Connection.html#setAutoCommit(boolean))
-[commit]([https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Connection.html#commit())
-[rollback](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Connection.html#rollback())
+[Connection.setAutoCommit](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Connection.html#setAutoCommit(boolean))
+[commit]([https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Connection.html#commit())
+[rollback](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Connection.html#rollback())
 
 ```java
 try(Connection connection = dataSource.getConnection()) {
@@ -56,18 +56,18 @@ try(Connection connection = dataSource.getConnection()) {
 
 ### Transaction semantics
 
-[TRANSACTION_READ_COMMITTED](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Connection.html#TRANSACTION_READ_COMMITTED)
+[TRANSACTION_READ_COMMITTED](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Connection.html#TRANSACTION_READ_COMMITTED)
 see modification from other transactions
 
-[TRANSACTION_REPEATABLE_READ](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Connection.html#TRANSACTION_REPEATABLE_READ)
+[TRANSACTION_REPEATABLE_READ](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Connection.html#TRANSACTION_REPEATABLE_READ)
 don't see modification from other transactions
 
 
 
 ## Statement and PreparedStatement
 
-[Connection.createStatement()](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Connection.html#createStatement())
-[Connection.prepareStatement()](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Connection.html#prepareStatement(java.lang.String))
+[Connection.createStatement()](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Connection.html#createStatement())
+[Connection.prepareStatement()](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Connection.html#prepareStatement(java.lang.String))
 
 ```java
 Connection connection = ...
@@ -98,7 +98,7 @@ connection.commit();
 
 [CREATE TABLE](https://h2database.com/html/commands.html#create_table)
 
-[Statement.executeUpdate()](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Statement.html#executeUpdate(java.lang.String))
+[Statement.executeUpdate()](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Statement.html#executeUpdate(java.lang.String))
 
 ```java
 Connection connection = ...
@@ -119,7 +119,7 @@ connection.commit();
 
 [INSERT INTO](https://h2database.com/html/commands.html#insert)
 
-[PreparedStatement.setObject()](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/PreparedStatement.html#setObject(int,java.lang.Object))
+[PreparedStatement.setObject()](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/PreparedStatement.html#setObject(int,java.lang.Object))
 
 ```java
 Connection connection = ...
@@ -165,15 +165,15 @@ String query = """
   """;
 ```
 
-[Connection.prepareStatement(query,  Statement.RETURN_GENERATED_KEYS)](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Connection.html#prepareStatement(java.lang.String,int))
+[Connection.prepareStatement(query,  Statement.RETURN_GENERATED_KEYS)](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Connection.html#prepareStatement(java.lang.String,int))
 
-[Statement.getGeneratedKeys()](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Statement.html#getGeneratedKeys())
+[Statement.getGeneratedKeys()](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Statement.html#getGeneratedKeys())
 
-[ResultSet](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/ResultSet.html)
+[ResultSet](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/ResultSet.html)
 
-[ResultSet.next()](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/ResultSet.html#next())
+[ResultSet.next()](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/ResultSet.html#next())
 
-[ResultSet.getObject()](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/ResultSet.html#getObject(int))
+[ResultSet.getObject()](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/ResultSet.html#getObject(int))
 
 ```java
 Connection connection = ...
@@ -197,13 +197,13 @@ connection.commit();
 
 ## Query
 
-[Connection.prepareStatement()](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/Connection.html#prepareStatement(java.lang.String))
+[Connection.prepareStatement()](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Connection.html#prepareStatement(java.lang.String))
 
-[PreparedStatement.executeQuery](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/PreparedStatement.html#executeQuery())
+[PreparedStatement.executeQuery](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/PreparedStatement.html#executeQuery())
 
-[ResultSet.next()](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/ResultSet.html#next())
+[ResultSet.next()](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/ResultSet.html#next())
 
-[ResultSet.getObject()](https://docs.oracle.com/en/java/javase/16/docs/api/java.sql/java/sql/ResultSet.html#getObject(int))
+[ResultSet.getObject()](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/ResultSet.html#getObject(int))
 
 
 ```java
