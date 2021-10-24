@@ -43,13 +43,12 @@
         block.run();
         connection.commit();
       } catch(RuntimeException | SQLException e) {
-        var cause = (e instanceof UncheckedSQLException unchecked)? unchecked.getCause(): e;
         try {
           connection.rollback();
         } catch(SQLException suppressed) {
-          cause.addSuppressed(suppressed);
+          e.addSuppressed(suppressed);
         }
-        throw Utils.rethrow(cause);
+        throw Utils.rethrow(e);
       } finally{
         CONNECTION_THREAD_LOCAL.remove();
       }
@@ -112,7 +111,7 @@
         throw new UnsupportedOperationException("unknown type mapping for type " + propertyType.getName());
       }
       if (propertyType.isPrimitive()) {
-        typeName = typeName + " NOT NULL";
+        typeName += " NOT NULL";
       }
       joiner.add(columnName + ' ' + typeName);
     }
@@ -143,7 +142,7 @@
         throw new UnsupportedOperationException("unknown type mapping for type " + propertyType.getName());
       }
       if (propertyType.isPrimitive()) {
-        typeName = typeName + " NOT NULL";
+        typeName += " NOT NULL";
       }
       var getter = property.getReadMethod();
       if (getter.isAnnotationPresent(GeneratedValue.class)) {
@@ -151,7 +150,7 @@
       }
       joiner.add(columnName + ' ' + typeName);
       if (getter.isAnnotationPresent(Id.class)) {
-        joiner.add("PRIMARY KEY (" + propertyName + ')');
+        joiner.add("PRIMARY KEY (" + columnName + ')');
       }
     }
     var tableName = findTableName(beanType);
@@ -173,7 +172,7 @@
         return switch(name) {
           case "findAll" -> List.of();   // for now
           case "equals", "hashCode", "toString" -> throw new UnsupportedOperationException("" + method);
-          default -> throw new NoSuchMethodError("" + method);
+          default -> throw new IllegalStateException("unknown method " + method);
         };
     }));
   }
@@ -182,7 +181,25 @@
 ### Q7
 
 ```java
-  static Object toEntityClass(ResultSet resultSet, Constructor<?> constructor, BeanInfo beanInfo) throws SQLException {
+  private static Class<?> findBeanType(Class<?> repositoryType) {
+    var repositorySupertype = Arrays.stream(repositoryType.getGenericInterfaces())
+        .flatMap(superInterface -> {
+          if (superInterface instanceof ParameterizedType parameterizedType
+             && parameterizedType.getRawType() == Repository.class) {
+             return Stream.of(parameterizedType);
+          }
+          return null;
+        })
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("invalid repository interface " + repositoryType.getName()));
+    var typeArgument = repositorySupertype.getActualTypeArguments()[0];
+    if (typeArgument instanceof Class<?> beanType) {
+      return beanType;
+    }
+    throw new IllegalArgumentException("invalid type argument " + typeArgument + " for repository interface " + repositoryType.getName());
+  }
+    
+  static Object toEntityClass(ResultSet resultSet, BeanInfo beanInfo, Constructor<?> constructor) throws SQLException {
     var instance = Utils.newInstance(constructor);
     for(var property: beanInfo.getPropertyDescriptors()) {
       var propertyName = property.getName();
@@ -195,13 +212,13 @@
     return instance; 
   }
 
-  private static List<Object> findAll(Connection connection, String sqlQuery, Constructor<?> constructor, BeanInfo beanInfo)
+  static List<Object> findAll(Connection connection, String sqlQuery, BeanInfo beanInfo, Constructor<?> constructor)
       throws SQLException {
     var list = new ArrayList<>();
     try(var statement = connection.prepareStatement(sqlQuery)) {
       try(var resultSet = statement.executeQuery()) {
         while(resultSet.next()) {
-          var instance = toEntityClass(resultSet, constructor, beanInfo);
+          var instance = toEntityClass(resultSet, beanInfo, constructor);
           list.add(instance);
         }
       }
@@ -210,7 +227,7 @@
   }
 
   public static <T, ID, R extends Repository<T, ID>> R createRepository(Class<? extends R> type) {
-    var beanType = findBeanType(type);
+    var beanType = findBeanTypeFromRepository(type);
     var beanInfo = Utils.beanInfo(beanType);
     var tableName = findTableName(beanType);
     var constructor = Utils.defaultConstructor(beanType);
@@ -221,22 +238,45 @@
         return switch(name) {
           case "findAll" -> {
             var sqlQuery = "SELECT * FROM " + tableName;
-            yield findAll(connection, sqlQuery, constructor, beanInfo);
+            yield findAll(connection, sqlQuery, beanInfo, constructor);
           }
           case "equals", "hashCode", "toString" -> throw new UnsupportedOperationException("" + method);
-          default -> throw new NoSuchMethodError("" + method);
+          default -> throw new IllegalStateException("unknown method " + method);
         };
       } catch(SQLException e) {
         throw new UncheckedSQLException(e);
       }
     }));
   }
+
+  public static void transaction(DataSource dataSource, TransactionBlock block) throws SQLException {
+    Objects.requireNonNull(dataSource);
+    Objects.requireNonNull(block);
+    try(var connection = dataSource.getConnection()) {
+      connection.setAutoCommit(false);
+      CONNECTION_THREAD_LOCAL.set(connection);
+      try {
+        block.run();
+        connection.commit();
+      } catch(RuntimeException | SQLException e) {
+        var cause = (e instanceof UncheckedSQLException unchecked)? unchecked.getCause(): e;
+        try {
+          connection.rollback();
+        } catch(SQLException suppressed) {
+          cause.addSuppressed(suppressed);
+        }
+        throw Utils.rethrow(cause);
+      } finally{
+        CONNECTION_THREAD_LOCAL.remove();
+      }
+    }
+  }
 ```
 
 ### Q8
 
 ```java
-  private static String createSaveQuery(String tableName, BeanInfo beanInfo) {
+  static String createSaveQuery(String tableName, BeanInfo beanInfo) {
     var values = new StringJoiner(", ", "(", ")");
     var columns = new StringJoiner(", ", "(", ")");
     for(var property: beanInfo.getPropertyDescriptors()) {
@@ -250,8 +290,8 @@
     return "INSERT INTO " + tableName + " " + columns + " VALUES " + values + ";";
   }
 
-  private static Object save(Connection connection, String tableName, BeanInfo beanInfo, Object bean)
-      throws SQLException {
+  static Object save(Connection connection, String tableName, BeanInfo beanInfo, Object bean, PropertyDescriptor idProperty)
+        throws SQLException {
     var sqlQuery = createSaveQuery(tableName, beanInfo);
     try(var statement = connection.prepareStatement(sqlQuery, Statement.RETURN_GENERATED_KEYS)) {
       var index = 1;
@@ -267,7 +307,7 @@
   }
 
   public static <T, ID, R extends Repository<T, ID>> R createRepository(Class<? extends R> type) {
-    var beanType = findBeanType(type);
+    var beanType = findBeanTypeFromRepository(type);
     var beanInfo = Utils.beanInfo(beanType);
     var tableName = findTableName(beanType);
     var constructor = Utils.defaultConstructor(beanType);
@@ -278,11 +318,11 @@
         return switch(name) {
           case "findAll" -> {
             var sqlQuery = "SELECT * FROM " + tableName;
-            yield findAll(connection, sqlQuery, constructor, beanInfo);
+            yield findAll(connection, sqlQuery, beanInfo, constructor);
           }
           case "equals", "hashCode", "toString" -> throw new UnsupportedOperationException("" + method);
           case "save" -> save(connection, tableName, beanInfo, args[0]);
-          default -> throw new NoSuchMethodError("" + method);
+          default -> throw new IllegalStateException("unknown method " + method);
         };
       } catch(SQLException e) {
         throw new UncheckedSQLException(e);
@@ -294,7 +334,7 @@
 ### Q9
 
 ```java
-  private static Object save(Connection connection, String tableName, BeanInfo beanInfo, Object bean, PropertyDescriptor idProperty)
+  static Object save(Connection connection, String tableName, BeanInfo beanInfo, Object bean, PropertyDescriptor idProperty)
       throws SQLException {
     var sqlQuery = createSaveQuery(tableName, beanInfo);
     try(var statement = connection.prepareStatement(sqlQuery, Statement.RETURN_GENERATED_KEYS)) {
@@ -306,10 +346,12 @@
         statement.setObject(index++, Utils.invokeMethod(bean, property.getReadMethod()));
       }
       statement.executeUpdate();
-      try(var resultSet = statement.getGeneratedKeys()) {
-        if (resultSet.next()) {
-          var key = resultSet.getObject( 1);
-          Utils.invokeMethod(bean, idProperty.getWriteMethod(), key);
+      if (idProperty != null) {
+        try(var resultSet = statement.getGeneratedKeys()) {
+          if (resultSet.next()) {
+            var key = resultSet.getObject( 1);
+            Utils.invokeMethod(bean, idProperty.getWriteMethod(), key);
+          }
         }
       }
     }
@@ -324,7 +366,7 @@
   }
   
   public static <T, ID, R extends Repository<T, ID>> R createRepository(Class<? extends R> type) {
-    var beanType = findBeanType(type);
+    var beanType = findBeanTypeFromRepository(type);
     var beanInfo = Utils.beanInfo(beanType);
     var tableName = findTableName(beanType);
     var constructor = Utils.defaultConstructor(beanType);
@@ -336,11 +378,11 @@
         return switch(name) {
           case "findAll" -> {
             var sqlQuery = "SELECT * FROM " + tableName;
-            yield findAll(connection, sqlQuery, constructor, beanInfo);
+            yield findAll(connection, sqlQuery, beanInfo, constructor);
           }
           case "equals", "hashCode", "toString" -> throw new UnsupportedOperationException("" + method);
           case "save" -> save(connection, tableName, beanInfo, args[0], idProperty);
-          default -> throw new NoSuchMethodError("" + method);
+          default -> throw new IllegalStateException("unknown method " + method);
         };
       } catch(SQLException e) {
         throw new UncheckedSQLException(e);
@@ -380,7 +422,7 @@
       }
       try(var resultSet = statement.executeQuery()) {
         while(resultSet.next()) {
-          var instance = toEntityClass(resultSet, constructor, beanInfo);
+          var instance = toEntityClass(resultSet, beanInfo, constructor);
           list.add(instance);
         }
       }
@@ -389,7 +431,7 @@
   }
   
   public static <T, ID, R extends Repository<T, ID>> R createRepository(Class<? extends R> type) {
-    var beanType = findBeanType(type);
+    var beanType = findBeanTypeFromRepository(type);
     var beanInfo = Utils.beanInfo(beanType);
     var tableName = findTableName(beanType);
     var constructor = Utils.defaultConstructor(beanType);
@@ -401,7 +443,7 @@
         return switch(name) {
           case "findAll" -> {
             var sqlQuery = "SELECT * FROM " + tableName;
-            yield findAll(connection, sqlQuery, constructor, beanInfo);
+            yield findAll(connection, sqlQuery, beanInfo, constructor);
           }
           case "findById" -> {
             var sqlQuery = "SELECT * FROM " + tableName + " WHERE " + idProperty.getName() + " = ?";
@@ -409,7 +451,7 @@
           }
           case "save" -> save(connection, tableName, beanInfo, args[0], idProperty);
           case "equals", "hashCode", "toString" -> throw new UnsupportedOperationException("" + method);
-          default -> { throw new IllegalStateException("unknown method " + method); }
+          default -> throw new IllegalStateException("unknown method " + method);
         };
       } catch(SQLException e) {
         throw new UncheckedSQLException(e);
@@ -422,7 +464,7 @@
 
 ```java
   public static <T, ID, R extends Repository<T, ID>> R createRepository(Class<? extends R> type) {
-    var beanType = findBeanType(type);
+    var beanType = findBeanTypeFromRepository(type);
     var beanInfo = Utils.beanInfo(beanType);
     var tableName = findTableName(beanType);
     var constructor = Utils.defaultConstructor(beanType);
@@ -434,7 +476,7 @@
         return switch(name) {
           case "findAll" -> {
             var sqlQuery = "SELECT * FROM " + tableName;
-            yield findAll(connection, sqlQuery, constructor, beanInfo);
+            yield findAll(connection, sqlQuery, beanInfo, constructor);
           }
           case "findById" -> {
             var sqlQuery = "SELECT * FROM " + tableName + " WHERE " + idProperty.getName() + " = ?";
@@ -468,7 +510,7 @@
   }
     
   public static <T, ID, R extends Repository<T, ID>> R createRepository(Class<? extends R> type) {
-    var beanType = findBeanType(type);
+    var beanType = findBeanTypeFromRepository(type);
     var beanInfo = Utils.beanInfo(beanType);
     var tableName = findTableName(beanType);
     var constructor = Utils.defaultConstructor(beanType);
@@ -480,7 +522,7 @@
         return switch(name) {
           case "findAll" -> {
             var sqlQuery = "SELECT * FROM " + tableName;
-            yield findAll(connection, sqlQuery, constructor, beanInfo);
+            yield findAll(connection, sqlQuery, beanInfo, constructor);
           }
           case "findById" -> {
             var sqlQuery = "SELECT * FROM " + tableName + " WHERE " + idProperty.getName() + " = ?";
