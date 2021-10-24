@@ -1,5 +1,6 @@
 package com.github.forax.framework.orm;
 
+import com.github.forax.framework.orm.ORMTest.Q11.NoId;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -19,15 +20,17 @@ import java.util.stream.LongStream;
 
 import static com.github.forax.framework.orm.ORM.createRepository;
 import static com.github.forax.framework.orm.ORM.createTable;
+import static com.github.forax.framework.orm.ORM.currentConnection;
 import static com.github.forax.framework.orm.ORM.transaction;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SuppressWarnings({"unused", "static-method"})
+@SuppressWarnings("static-method")
 public class ORMTest {
   @Nested
   public class Q1 {
@@ -168,6 +171,7 @@ public class ORMTest {
   }
 
 
+  @SuppressWarnings("unused")
   public static final class Furniture {
     private String name;
 
@@ -270,6 +274,7 @@ public class ORMTest {
     @Test @Tag("Q3")
     public void testCreateTableSQLExceptionAreCorrectlyPropagated() {
       interface Static {
+        @SuppressWarnings("unused")
         @Table("weird!name")
         class InvalidTableName {
           private long id;
@@ -301,6 +306,7 @@ public class ORMTest {
     }
   }
 
+  @SuppressWarnings("unused")
   public static final class Company {
     private Long id;
     private String name;
@@ -356,6 +362,7 @@ public class ORMTest {
   }
 
 
+  @SuppressWarnings("unused")
   public static final class Point {
     private Long id;
     private int x;
@@ -377,6 +384,7 @@ public class ORMTest {
     }
   }
 
+  @SuppressWarnings("unused")
   @Table("User")
   public static final class User {
     private Long id;
@@ -471,9 +479,55 @@ public class ORMTest {
         ), set);
       });
     }
+
+    @Table("USER2")
+    static final class AnotherUser {
+      private Long id;
+
+      public AnotherUser() {}
+
+      @Id
+      @Column("key")
+      public Long getId() {
+        return id;
+      }
+      public void setId(Long id) {
+        this.id = id;
+      }
+    }
+
+    @Test @Tag("Q5")
+    @SuppressWarnings("resource")
+    public void testCreateTableWithColumnNameRenamed() throws SQLException {
+      record Column(String name, String typeName, int size, boolean isNullable, boolean isAutoIncrement) {}
+      var dataSource = new JdbcDataSource();
+      dataSource.setURL("jdbc:h2:mem:test");
+      transaction(dataSource, () -> {
+        createTable(AnotherUser.class);
+        var set = new HashSet<Column>();
+        var connection = ORM.currentConnection();
+        var metaData = connection.getMetaData();
+        try(var resultSet = metaData.getColumns(null, null, "USER2", null)) {
+          while(resultSet.next()) {
+            var column = new Column(
+                resultSet.getString(4),                 // COLUMN_NAME
+                resultSet.getString(6),                 // TYPE_NAME
+                resultSet.getInt(7),                    // COLUMN_SIZE
+                resultSet.getString(18).equals("YES"),  // IS_NULLABLE
+                resultSet.getString(23).equals("YES")   // IS_AUTOINCREMENT
+            );
+            set.add(column);
+          }
+        }
+        assertEquals(Set.of(
+            new Column("KEY", "BIGINT", 19, false, false)
+        ), set);
+      });
+    }
   }
 
 
+  @SuppressWarnings("unused")
   public static final class Person {
     private Long id;
     private String name;
@@ -560,33 +614,11 @@ public class ORMTest {
     }
 
     @Test @Tag("Q6")
-    public void testRepositorySQLExceptionAreCorrectlyPropagated() {
-      interface Static {
-        @Table("weird!name")
-        class InvalidTableName {
-          private long id;
-
-          @Id
-          public long getId() {
-            return id;
-          }
-          public void setId(long id) {
-            this.id = id;
-          }
-        }
-      }
-      interface SimpleRepository extends Repository<Static.InvalidTableName, Long> { }
-      var dataSource = new JdbcDataSource();
-      dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(SimpleRepository.class);
-      assertThrows(SQLException.class, () -> transaction(dataSource, repository::findAll));
-    }
-
-    @Test @Tag("Q6")
     public void testRepositoryNotInTransaction() throws SQLException {
       interface WeirdRepository extends Repository<Person, Long> {
         void weirdMethod(String name);
       }
+
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
       var repository = createRepository(WeirdRepository.class);
@@ -627,7 +659,9 @@ public class ORMTest {
         try(var statement = connection.createStatement()) {
           var resultSet = statement.executeQuery(query);
           assertTrue(resultSet.next());
-          entity = ORM.toEntityClass(resultSet, Utils.defaultConstructor(Person.class), Utils.beanInfo(Person.class));
+          var beanInfo = Utils.beanInfo(Person.class);
+          var constructor = Utils.defaultConstructor(Person.class);
+          entity = ORM.toEntityClass(resultSet, beanInfo, constructor);
           assertFalse(resultSet.next());
         }
         assertEquals(new Person(42L, "scott tiger"), entity);
@@ -636,10 +670,36 @@ public class ORMTest {
 
     @Test @Tag("Q7")
     @SuppressWarnings("resource")
-    public void testFindAllPersons() throws SQLException {
+    public void testFindAll() throws SQLException {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
+      transaction(dataSource, () -> {
+        createTable(Person.class);
+        var connection = ORM.currentConnection();
+        var update = """
+          INSERT INTO PERSON (ID, NAME) VALUES (1, 'john');
+          INSERT INTO PERSON (ID, NAME) VALUES (2, 'jane');
+          """;
+        try(var statement = connection.createStatement()) {
+          statement.executeUpdate(update);
+        }
+        var beanInfo = Utils.beanInfo(Person.class);
+        var constructor = Utils.defaultConstructor(Person.class);
+        var persons = ORM.findAll(connection, "SELECT * FROM PERSON", beanInfo, constructor);
+        assertEquals(List.of(
+                new Person(1L, "john"),
+                new Person(2L, "jane")),
+            persons);
+      });
+    }
+
+    @Test @Tag("Q7")
+    @SuppressWarnings("resource")
+    public void testFindAllPersons() throws SQLException {
       interface PersonRepository extends Repository<Person, Long> {}
+
+      var dataSource = new JdbcDataSource();
+      dataSource.setURL("jdbc:h2:mem:test");
       var repository = createRepository(PersonRepository.class);
       transaction(dataSource, () -> {
         createTable(Person.class);
@@ -659,10 +719,60 @@ public class ORMTest {
             persons);
       });
     }
+
+    @Test @Tag("Q7")
+    public void testRepositorySQLExceptionAreCorrectlyPropagated() {
+      interface Static {
+        @SuppressWarnings("unused")
+        @Table("weird!name")
+        class InvalidTableName {
+          private long id;
+
+          @Id
+          public long getId() {
+            return id;
+          }
+          public void setId(long id) {
+            this.id = id;
+          }
+        }
+      }
+      interface SimpleRepository extends Repository<Static.InvalidTableName, Long> { }
+
+      var dataSource = new JdbcDataSource();
+      dataSource.setURL("jdbc:h2:mem:test");
+      var repository = createRepository(SimpleRepository.class);
+      assertThrows(SQLException.class, () -> transaction(dataSource, repository::findAll));
+    }
   }
 
   @Nested
   class Q8 {
+
+    @Test @Tag("Q8")
+    public void testCreateSaveQuery() {
+      var beanInfo = Utils.beanInfo(Person.class);
+      var sqlQuery = ORM.createSaveQuery("PERSON", beanInfo);
+      assertEquals("MERGE INTO PERSON (id, name) VALUES (?, ?);", sqlQuery);
+    }
+
+    @Test @Tag("Q8")
+    public void testSave() throws SQLException {
+      interface PersonRepository extends Repository<Person, Long> {}
+
+      var dataSource = new JdbcDataSource();
+      dataSource.setURL("jdbc:h2:mem:test");
+      var repository = createRepository(PersonRepository.class);
+      transaction(dataSource, () -> {
+        createTable(Person.class);
+        var connection = currentConnection();
+        var beanInfo = Utils.beanInfo(Person.class);
+        var bean = new Person(1L, "Ana");
+        ORM.save(connection, "PERSON", beanInfo, bean, null);
+        var all = repository.findAll();
+        assertEquals(List.of(new Person(1L, "Ana")), all);
+      });
+    }
 
     @Test @Tag("Q8")
     public void testSaveOnePerson() throws SQLException {
@@ -704,6 +814,7 @@ public class ORMTest {
   }
 
 
+  @SuppressWarnings("unused")
   public static class Data {
     private String id;
 
@@ -736,10 +847,10 @@ public class ORMTest {
         assertEquals("2", data2.id);
       });
     }
-
   }
 
 
+  @SuppressWarnings("unused")
   static final class Account {
     private Integer id;
     private long balance;
@@ -802,6 +913,7 @@ public class ORMTest {
 
   }
 
+  @SuppressWarnings("unused")
   static final class Pet {
     private Long id;
     private String name;
@@ -859,6 +971,13 @@ public class ORMTest {
     public static final class NoId { }
 
     @Test @Tag("Q11")
+    public void testFindId() throws SQLException {
+      var beanInfo = Utils.beanInfo(Person.class);
+      var property = ORM.findId(Person.class, beanInfo);
+      assertEquals("id", property.getName());
+    }
+
+    @Test @Tag("Q11")
     public void testFindById() throws SQLException {
       interface PersonRepository extends Repository<Person, Long> {}
 
@@ -891,12 +1010,22 @@ public class ORMTest {
     }
 
     @Test @Tag("Q11")
+    public void testFindNoId() throws SQLException {
+      var beanInfo = Utils.beanInfo(NoId.class);
+      assertNull(ORM.findId(NoId.class, beanInfo));
+    }
+
+    @Test @Tag("Q11")
     public void testRepositoryClassWithNoPrimaryKey() throws SQLException {
-      interface VoidRepository extends Repository<NoId, Long> { }
+      interface VoidRepository extends Repository<NoId, Void> { }
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      transaction(dataSource, () -> assertThrows(IllegalStateException.class, () -> createRepository(VoidRepository.class)));
+      var repository = createRepository(VoidRepository.class);
+      transaction(dataSource, () -> {
+        createTable(NoId.class);
+        assertEquals(List.of(), repository.findAll());
+      });
     }
   }
 
@@ -978,6 +1107,26 @@ public class ORMTest {
   class Q13 {
 
     @Test @Tag("Q13")
+    public void testFindPropertyBalance() throws SQLException {
+      var beanInfo = Utils.beanInfo(Account.class);
+      var property = ORM.findProperty(Account.class, beanInfo, "balance");
+      assertEquals("balance", property.getName());
+    }
+
+    @Test @Tag("Q13")
+    public void testFindPropertyId() throws SQLException {
+      var beanInfo = Utils.beanInfo(Account.class);
+      var property = ORM.findProperty(Account.class, beanInfo, "id");
+      assertEquals("id", property.getName());
+    }
+
+    @Test @Tag("Q13")
+    public void testFindNoProperty() throws SQLException {
+      var beanInfo = Utils.beanInfo(Account.class);
+      assertThrows(IllegalStateException.class, () ->  ORM.findProperty(Account.class, beanInfo, "noproperty"));
+    }
+
+    @Test @Tag("Q13")
     public void testFindByBalance() throws SQLException {
       interface PersonRepository extends Repository<Account, Integer> {
         Optional<Account> findByBalance(String name);
@@ -1010,6 +1159,86 @@ public class ORMTest {
         repository.save(new Person(2L, "biva"));
         var person = repository.findByName("biva").orElseThrow();
         assertEquals(new Person(2L, "biva"), person);
+      });
+    }
+
+    @SuppressWarnings("unused")
+    static final class Country {
+      private Long id;
+      private String name;
+
+      public Country() {}
+      public Country(String name) {
+        this.name = name;
+      }
+
+      @Id
+      @GeneratedValue
+      public Long getId() {
+        return id;
+      }
+      public void setId(Long id) {
+        this.id = id;
+      }
+
+      public String getName() {
+        return name;
+      }
+      public void setName(String name) {
+        this.name = name;
+      }
+
+      @Override
+      public boolean equals(Object o) {
+        return o instanceof Country country &&
+            Objects.equals(id, country.id) &&
+            Objects.equals(name, country.name);
+      }
+      @Override
+      public int hashCode() {
+        return Objects.hash(id, name);
+      }
+
+      @Override
+      public String toString() {
+        return "Country { id=" + id + ", name='" + name + "'}";
+      }
+    }
+
+    @Test @Tag("Q13")
+    public void testExample() throws SQLException {
+      interface CountryRepository extends Repository<Country, Long> {
+        @Query("SELECT * FROM COUNTRY WHERE NAME LIKE ?")
+        List<Country> findAllWithNameLike(String name);
+
+        Optional<Country> findByName(String name);
+      }
+
+      var dataSource = new JdbcDataSource();
+      dataSource.setURL("jdbc:h2:mem:test");
+      var repository = createRepository(CountryRepository.class);
+      transaction(dataSource, () -> {
+        createTable(Country.class);
+        repository.save(new Country("France"));
+        repository.save(new Country("Spain"));
+        repository.save(new Country("Australia"));
+        repository.save(new Country("Austria"));
+
+        assertAll(
+            () -> {
+              var list = repository.findAll();
+              assertEquals(List.of("France", "Spain", "Australia", "Austria"), list.stream().map(Country::getName).toList());
+            },() -> {
+              var list = repository.findAllWithNameLike("Aus%");
+              assertEquals(List.of("Australia", "Austria"), list.stream().map(Country::getName).toList());
+            }, () -> {
+              var country = repository.findByName("Spain").orElseThrow();
+              assertEquals("Spain", country.name);
+            }, () -> {
+              var country = repository.findByName("France").orElseThrow();
+              var country2 = repository.findById(country.id).orElseThrow();
+              assertEquals(country2, country);
+            });
       });
     }
 

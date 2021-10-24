@@ -26,6 +26,37 @@ public final class ORM {
     throw new AssertionError();
   }
 
+  @FunctionalInterface
+  public interface TransactionBlock {
+    void run() throws SQLException;
+  }
+
+  private static final Map<Class<?>, String> TYPE_MAPPING = Map.of(
+      int.class, "INTEGER",
+      Integer.class, "INTEGER",
+      long.class, "BIGINT",
+      Long.class, "BIGINT",
+      String.class, "VARCHAR(255)"
+  );
+
+  private static Class<?> findBeanTypeFromRepository(Class<?> repositoryType) {
+    var repositorySupertype = Arrays.stream(repositoryType.getGenericInterfaces())
+        .flatMap(superInterface -> {
+          if (superInterface instanceof ParameterizedType parameterizedType
+              && parameterizedType.getRawType() == Repository.class) {
+            return Stream.of(parameterizedType);
+          }
+          return null;
+        })
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("invalid repository interface " + repositoryType.getName()));
+    var typeArgument = repositorySupertype.getActualTypeArguments()[0];
+    if (typeArgument instanceof Class<?> beanType) {
+      return beanType;
+    }
+    throw new IllegalArgumentException("invalid type argument " + typeArgument + " for repository interface " + repositoryType.getName());
+  }
+
   private static class UncheckedSQLException extends RuntimeException {
     @Serial
     private static final long serialVersionUID = 42L;
@@ -40,10 +71,8 @@ public final class ORM {
     }
   }
 
-  @FunctionalInterface
-  public interface TransactionBlock {
-    void run() throws SQLException;
-  }
+
+  // --- do not change the code above
 
   private static final ThreadLocal<Connection> CONNECTION_THREAD_LOCAL = new ThreadLocal<>();
 
@@ -78,14 +107,6 @@ public final class ORM {
     }
     return connection;
   }
-
-  private static final Map<Class<?>, String> TYPE_MAPPING = Map.of(
-      int.class, "INTEGER",
-      Integer.class, "INTEGER",
-      long.class, "BIGINT",
-      Long.class, "BIGINT",
-      String.class, "VARCHAR(255)"
-  );
 
   // package private for tests
   static String findTableName(Class<?> beanType) {
@@ -125,7 +146,7 @@ public final class ORM {
       }
       joiner.add(columnName + ' ' + typeName);
       if (getter.isAnnotationPresent(Id.class)) {
-        joiner.add("PRIMARY KEY (" + propertyName + ')');
+        joiner.add("PRIMARY KEY (" + columnName + ')');
       }
     }
     var tableName = findTableName(beanType);
@@ -138,7 +159,7 @@ public final class ORM {
   }
 
   // package private for tests
-  static Object toEntityClass(ResultSet resultSet, Constructor<?> constructor, BeanInfo beanInfo) throws SQLException {
+  static Object toEntityClass(ResultSet resultSet, BeanInfo beanInfo, Constructor<?> constructor) throws SQLException {
     var instance = Utils.newInstance(constructor);
     for(var property: beanInfo.getPropertyDescriptors()) {
       var propertyName = property.getName();
@@ -151,7 +172,8 @@ public final class ORM {
     return instance;
   }
 
-  private static List<Object> findAll(Connection connection, String sqlQuery, BeanInfo beanInfo, Constructor<?> constructor, Object... args) throws SQLException {
+  // package private for tests
+   static List<Object> findAll(Connection connection, String sqlQuery, BeanInfo beanInfo, Constructor<?> constructor, Object... args) throws SQLException {
     var list = new ArrayList<>();
     try(var statement = connection.prepareStatement(sqlQuery)) {
       //System.err.println(sqlQuery);
@@ -162,7 +184,7 @@ public final class ORM {
       }
       try(var resultSet = statement.executeQuery()) {
         while(resultSet.next()) {
-          var instance = toEntityClass(resultSet, constructor, beanInfo);
+          var instance = toEntityClass(resultSet, beanInfo, constructor);
           list.add(instance);
         }
       }
@@ -170,35 +192,25 @@ public final class ORM {
     return list;
   }
 
-  private static Class<?> findBeanType(Class<?> repositoryInterface) {
-    var repositoryType = Arrays.stream(repositoryInterface.getGenericInterfaces())
-        .flatMap(superInterface -> superInterface instanceof ParameterizedType parameterizedType? Stream.of(parameterizedType): Stream.empty())
-        .filter(superInterface -> superInterface.getRawType() == Repository.class)
-        .findFirst().orElseThrow(() -> new IllegalArgumentException("invalid repository interface " + repositoryInterface.getName()));
-    var typeArgument = repositoryType.getActualTypeArguments()[0];
-    if (typeArgument instanceof Class<?> beanType) {
-      return beanType;
-    }
-    throw new IllegalArgumentException("invalid type argument " + typeArgument + " for repository interface " + repositoryInterface.getName());
+  // package private for tests
+  static PropertyDescriptor findId(Class<?> beanType, BeanInfo beanInfo) {
+    return Arrays.stream(beanInfo.getPropertyDescriptors())
+        .filter(property -> property.getReadMethod().isAnnotationPresent(Id.class))
+        .findFirst()
+        .orElse(null);
   }
 
-  private static PropertyDescriptor findProperty(Class<?> beanType, BeanInfo beanInfo, String propertyName) {
+  // package private for tests
+  static PropertyDescriptor findProperty(Class<?> beanType, BeanInfo beanInfo, String propertyName) {
     return Arrays.stream(beanInfo.getPropertyDescriptors())
         .filter(property -> property.getName().equals(propertyName))
         .findFirst()
         .orElseThrow(() -> {throw new IllegalStateException("no property " + propertyName + " found for type " + beanType.getName()); });
   }
 
-  private static PropertyDescriptor findId(Class<?> beanType, BeanInfo beanInfo) {
-    return Arrays.stream(beanInfo.getPropertyDescriptors())
-        .filter(property -> property.getReadMethod().isAnnotationPresent(Id.class))
-        .findFirst()
-        .orElseThrow(() -> {throw new IllegalStateException("no property annotated with @id found for type " + beanType.getName()); });
-  }
-
   @SuppressWarnings("resource")
   public static <T, ID, R extends Repository<T, ID>> R createRepository(Class<? extends R> type) {
-    var beanType = findBeanType(type);
+    var beanType = findBeanTypeFromRepository(type);
     var beanInfo = Utils.beanInfo(beanType);
     var tableName = findTableName(beanType);
     var constructor = Utils.defaultConstructor(beanType);
@@ -238,7 +250,8 @@ public final class ORM {
     }));
   }
 
-  private static String createSaveQuery(String tableName, BeanInfo beanInfo) {
+  // package private for tests
+  static String createSaveQuery(String tableName, BeanInfo beanInfo) {
     var values = new StringJoiner(", ", "(", ")");
     var columns = new StringJoiner(", ", "(", ")");
     for(var property: beanInfo.getPropertyDescriptors()) {
@@ -252,9 +265,9 @@ public final class ORM {
     return "MERGE INTO " + tableName + " " + columns + " VALUES " + values + ";";
   }
 
-  private static Object save(Connection connection, String tableName, BeanInfo beanInfo, Object bean, PropertyDescriptor idProperty) throws SQLException {
+  static Object save(Connection connection, String tableName, BeanInfo beanInfo, Object bean, PropertyDescriptor idProperty) throws SQLException {
     String sqlQuery = createSaveQuery(tableName, beanInfo);
-    System.err.println(sqlQuery);
+    //System.err.println(sqlQuery);
 
     try(var statement = connection.prepareStatement(sqlQuery, Statement.RETURN_GENERATED_KEYS)) {
       var index = 1;
@@ -265,10 +278,12 @@ public final class ORM {
         statement.setObject(index++, Utils.invokeMethod(bean, property.getReadMethod()));
       }
       statement.executeUpdate();
-      try(var resultSet = statement.getGeneratedKeys()) {
-        if (resultSet.next()) {
-          var key = resultSet.getObject( 1);
-          Utils.invokeMethod(bean, idProperty.getWriteMethod(), key);
+      if (idProperty != null) {
+        try(var resultSet = statement.getGeneratedKeys()) {
+          if (resultSet.next()) {
+            var key = resultSet.getObject( 1);
+            Utils.invokeMethod(bean, idProperty.getWriteMethod(), key);
+          }
         }
       }
     }
