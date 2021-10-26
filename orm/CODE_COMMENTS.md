@@ -72,7 +72,7 @@
     return name.toUpperCase(Locale.ROOT);
   }
 
-  public static void createTable(Class<?> beanType) throws SQLException {
+  private static String createTableQuery(Class<?> beanType) {
     var beanInfo = Utils.beanInfo(beanType);
     var joiner = new StringJoiner(",\n", "(\n", "\n)");
     for(var property: beanInfo.getPropertyDescriptors()) {
@@ -81,11 +81,14 @@
         continue;
       }
       var columnName = findColumnName(property);
-      var typeName = "VARCHAR(255)";
-      joiner.add(columnName + ' ' + typeName);
+      joiner.add(columnName + " VARCHAR(255)");
     }
     var tableName = findTableName(beanType);
-    var sqlQuery = "CREATE TABLE " + tableName + joiner + ";";
+    return "CREATE TABLE " + tableName + joiner + ";";
+  }
+
+  public static void createTable(Class<?> beanType) throws SQLException {
+    var sqlQuery = createTableQuery(beanType);
     var connection = currentConnection();
     try(var statement = connection.createStatement()) {
       statement.executeUpdate(sqlQuery);
@@ -96,7 +99,7 @@
 ### Q4
 
 ```java
-  public static void createTable(Class<?> beanType) throws SQLException {
+  private static String createTableQuery(Class<?> beanType) {
     var beanInfo = Utils.beanInfo(beanType);
     var joiner = new StringJoiner(",\n", "(\n", "\n)");
     for(var property: beanInfo.getPropertyDescriptors()) {
@@ -110,24 +113,18 @@
       if (typeName == null) {
         throw new UnsupportedOperationException("unknown type mapping for type " + propertyType.getName());
       }
-      if (propertyType.isPrimitive()) {
-        typeName += " NOT NULL";
-      }
-      joiner.add(columnName + ' ' + typeName);
+      var nullable = propertyType.isPrimitive()? " NOT NULL": "";
+      joiner.add(columnName + ' ' + typeName + nullable);
     }
     var tableName = findTableName(beanType);
-    var sqlQuery = "CREATE TABLE " + tableName + joiner + ";";
-    var connection = currentConnection();
-    try(var statement = connection.createStatement()) {
-      statement.executeUpdate(sqlQuery);
-    }
+    return "CREATE TABLE " + tableName + joiner + ";";
   }
 ```
 
 ### Q5
 
 ```java
-  public static void createTable(Class<?> beanType) throws SQLException {
+  private static String createTableQuery(Class<?> beanType) {
     var beanInfo = Utils.beanInfo(beanType);
     var joiner = new StringJoiner(",\n", "(\n", "\n)");
     for(var property: beanInfo.getPropertyDescriptors()) {
@@ -141,24 +138,16 @@
       if (typeName == null) {
         throw new UnsupportedOperationException("unknown type mapping for type " + propertyType.getName());
       }
-      if (propertyType.isPrimitive()) {
-        typeName += " NOT NULL";
-      }
+      var nullable = propertyType.isPrimitive()? " NOT NULL": "";
       var getter = property.getReadMethod();
-      if (getter.isAnnotationPresent(GeneratedValue.class)) {
-        typeName += " AUTO_INCREMENT";
-      }
-      joiner.add(columnName + ' ' + typeName);
+      var autoincrement = getter.isAnnotationPresent(GeneratedValue.class)? " AUTO_INCREMENT": "";
+      joiner.add(columnName + ' ' + typeName + nullable + autoincrement);
       if (getter.isAnnotationPresent(Id.class)) {
         joiner.add("PRIMARY KEY (" + columnName + ')');
       }
     }
     var tableName = findTableName(beanType);
-    var sqlQuery = "CREATE TABLE " + tableName + joiner + ";";
-    var connection = currentConnection();
-    try(var statement = connection.createStatement()) {
-      statement.executeUpdate(sqlQuery);
-    }
+    return "CREATE TABLE " + tableName + joiner + ";";
   }
 ```
 
