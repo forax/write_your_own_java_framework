@@ -49,6 +49,30 @@ public class ORMTest {
 
     @Test @Tag("Q1")
     @SuppressWarnings("resource")
+    public void testTransactionIsNotAvailableAfterTransaction() throws SQLException {
+      var dataSource = new JdbcDataSource();
+      dataSource.setURL("jdbc:h2:mem:test");
+      ORM.transaction(dataSource, () -> {
+        // empty
+      });
+      assertThrows(IllegalStateException.class, ORM::currentConnection);
+    }
+
+    @Test @Tag("Q1")
+    @SuppressWarnings("resource")
+    public void testTransactionIsNotAvailableAfterTransactionWhichEndsWithAnException() throws SQLException {
+      var dataSource = new JdbcDataSource();
+      dataSource.setURL("jdbc:h2:mem:test");
+      assertThrows(SQLException.class, () -> {
+        ORM.transaction(dataSource, () -> {
+          throw new SQLException();
+        });
+      });
+      assertThrows(IllegalStateException.class, ORM::currentConnection);
+    }
+
+    @Test @Tag("Q1")
+    @SuppressWarnings("resource")
     public void testTransactionNull() {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
