@@ -18,6 +18,7 @@
 
 
 ```java
+Path path = ...
 DataSource dataSource = new JdbcDataSource();
 dataSource.setURL("jdbc:h2:" + path);
 ```
@@ -60,9 +61,10 @@ try(Connection connection = dataSource.getConnection()) {
 see modification from other transactions
 
 [TRANSACTION_REPEATABLE_READ](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Connection.html#TRANSACTION_REPEATABLE_READ)
-don't see modification from other transactions
+don't see row modifications from other transactions but can see new rows
 
-
+[TRANSACTION_SERIALIZABLE](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Connection.html#TRANSACTION_SERIALIZABLE)
+don't see any modifications from other transactions
 
 ## Statement and PreparedStatement
 
@@ -115,6 +117,7 @@ try(Statement statement = connection.createStatement()) {
 connection.commit();
 ```
 
+
 ## Insert data
 
 [INSERT INTO](https://h2database.com/html/commands.html#insert)
@@ -134,7 +137,8 @@ try(PreparedStatement statement = connection.prepareStatement(sqlQuery)) {
 connection.commit();
 ```
 
-# Merge data
+
+## Merge data
 
 [MERGE INTO](https://h2database.com/html/commands.html#merge_into)
 
@@ -151,7 +155,38 @@ try(PreparedStatement statement = connection.prepareStatement(sqlQuery)) {
 connection.commit();
 ```
 
-### Generated Primary Key
+
+## Query
+
+[Connection.prepareStatement()](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Connection.html#prepareStatement(java.lang.String))
+
+[PreparedStatement.executeQuery](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/PreparedStatement.html#executeQuery())
+
+[ResultSet.next()](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/ResultSet.html#next())
+
+[ResultSet.getObject()](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/ResultSet.html#getObject(int))
+
+
+```java
+Connection connection = ...
+String sqlQuery = """
+  SELECT (id, name) FROM FOO WHERE name = ?;
+""";
+try(PreparedStatement statement = connection.prepareStatement(sqlQuery)) {
+  statement.setObject(1, "James Bond");
+  try(ResultSet resultSet = statement.executeQuery()) {
+    while(resultSet.next()) {
+      Long id = (Long) resultSet.getObject(1);
+      String name = (String) resultSet.getObject(2);
+      ...          
+    }
+  }
+}
+connection.commit();
+```
+
+
+## Generated Primary Key
 
 [H2 AUTO_INCREMENT](https://stackoverflow.com/questions/9353167/auto-increment-id-in-h2-database#9356818)
 
@@ -188,36 +223,6 @@ try(PreparedStatement statement = connection.prepareStatement(sqlQuery, Statemen
     if (resultSet.next()) {
       Long key = (Long) resultSet.getObject(1);
       ...
-    }
-  }
-}
-connection.commit();
-```
-
-
-## Query
-
-[Connection.prepareStatement()](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/Connection.html#prepareStatement(java.lang.String))
-
-[PreparedStatement.executeQuery](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/PreparedStatement.html#executeQuery())
-
-[ResultSet.next()](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/ResultSet.html#next())
-
-[ResultSet.getObject()](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/ResultSet.html#getObject(int))
-
-
-```java
-Connection connection = ...
-String sqlQuery = """
-  SELECT (id, name) FROM FOO WHERE name = ?;
-""";
-try(PreparedStatement statement = connection.prepareStatement(sqlQuery)) {
-  statement.setObject(1, "James Bond");
-  try(ResultSet resultSet = statement.executeQuery()) {
-    while(resultSet.next()) {
-      Long id = (Long) resultSet.getObject(1);
-      String name = (String) resultSet.getObject(2);
-      ...          
     }
   }
 }
