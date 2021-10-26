@@ -123,7 +123,7 @@ public final class ORM {
     return name.toUpperCase(Locale.ROOT);
   }
 
-  public static void createTable(Class<?> beanType) throws SQLException {
+  private static String createTableQuery(Class<?> beanType) {
     var beanInfo = Utils.beanInfo(beanType);
     var joiner = new StringJoiner(",\n", "(\n", "\n)");
     for(var property: beanInfo.getPropertyDescriptors()) {
@@ -137,20 +137,20 @@ public final class ORM {
       if (typeName == null) {
         throw new UnsupportedOperationException("unknown type mapping for type " + propertyType.getName());
       }
-      if (propertyType.isPrimitive()) {
-        typeName = typeName + " NOT NULL";
-      }
+      var nullable = propertyType.isPrimitive()? " NOT NULL": "";
       var getter = property.getReadMethod();
-      if (getter.isAnnotationPresent(GeneratedValue.class)) {
-        typeName += " AUTO_INCREMENT";
-      }
-      joiner.add(columnName + ' ' + typeName);
+      var autoincrement = getter.isAnnotationPresent(GeneratedValue.class)? " AUTO_INCREMENT": "";
+      joiner.add(columnName + ' ' + typeName + nullable + autoincrement);
       if (getter.isAnnotationPresent(Id.class)) {
         joiner.add("PRIMARY KEY (" + columnName + ')');
       }
     }
     var tableName = findTableName(beanType);
-    var sqlQuery = "CREATE TABLE " + tableName + joiner + ";";
+    return "CREATE TABLE " + tableName + joiner + ";";
+  }
+
+  public static void createTable(Class<?> beanType) throws SQLException {
+    var sqlQuery = createTableQuery(beanType);
     //System.err.println(sqlQuery);
     var connection = currentConnection();
     try(var statement = connection.createStatement()) {

@@ -1,6 +1,5 @@
 package com.github.forax.framework.orm;
 
-import com.github.forax.framework.orm.ORMTest.Q11.NoId;
 import org.h2.jdbcx.JdbcDataSource;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -18,10 +17,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.LongStream;
 
-import static com.github.forax.framework.orm.ORM.createRepository;
-import static com.github.forax.framework.orm.ORM.createTable;
-import static com.github.forax.framework.orm.ORM.currentConnection;
-import static com.github.forax.framework.orm.ORM.transaction;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -40,7 +35,7 @@ public class ORMTest {
     public void testCurrentConnection() throws SQLException {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      transaction(dataSource, () -> {
+      ORM.transaction(dataSource, () -> {
         var connection = ORM.currentConnection();
         assertNotNull(connection);
       });
@@ -58,8 +53,8 @@ public class ORMTest {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
       assertAll(
-          () -> assertThrows(NullPointerException.class, () -> transaction(dataSource, null)),
-          () -> assertThrows(NullPointerException.class, () -> transaction(null, () -> {}))
+          () -> assertThrows(NullPointerException.class, () -> ORM.transaction(dataSource, null)),
+          () -> assertThrows(NullPointerException.class, () -> ORM.transaction(null, () -> {}))
       );
     }
   }
@@ -75,7 +70,7 @@ public class ORMTest {
       try {
         var dataSource = new JdbcDataSource();
         dataSource.setURL("jdbc:h2:" + path);
-        transaction(dataSource, () -> {
+        ORM.transaction(dataSource, () -> {
           var connection = ORM.currentConnection();
           var update = """
             CREATE TABLE FOO (
@@ -92,7 +87,7 @@ public class ORMTest {
           }
           // commit
         });
-        transaction(dataSource, () -> {
+        ORM.transaction(dataSource, () -> {
           var connection2 = ORM.currentConnection();
           var query2 = """
             SELECT * FROM FOO;
@@ -122,7 +117,7 @@ public class ORMTest {
         var dataSource = new JdbcDataSource();
         dataSource.setURL("jdbc:h2:" + path);
 
-        transaction(dataSource, () -> {
+        ORM.transaction(dataSource, () -> {
           var connection = ORM.currentConnection();
           var update = """
             CREATE TABLE FOO (
@@ -137,7 +132,7 @@ public class ORMTest {
           // commit
         });
         assertThrows(RuntimeException.class, () -> {
-          transaction(dataSource, () -> {
+          ORM.transaction(dataSource, () -> {
             var connection = ORM.currentConnection();
             var update = """
             INSERT INTO FOO (ID, NAME) VALUES (1, 'bar');
@@ -150,7 +145,7 @@ public class ORMTest {
             // rollback
           });
         });
-        transaction(dataSource, () -> {
+        ORM.transaction(dataSource, () -> {
           var connection2 = ORM.currentConnection();
           var query2 = """
             SELECT * FROM FOO;
@@ -214,8 +209,8 @@ public class ORMTest {
       record Column(String name, String typeName, int size, boolean isNullable, boolean isAutoIncrement) {}
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      transaction(dataSource, () -> {
-        createTable(Furniture.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Furniture.class);
         var set = new HashSet<Column>();
         var connection = ORM.currentConnection();
         var metaData = connection.getMetaData();
@@ -243,7 +238,7 @@ public class ORMTest {
       record Column(String name, String typeName, int size, boolean isNullable, boolean isAutoIncrement) {}
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      transaction(dataSource, () -> {
+      ORM.transaction(dataSource, () -> {
         ORM.createTable(EmptyBean.class);
         var set = new HashSet<Column>();
         var connection = ORM.currentConnection();
@@ -268,7 +263,7 @@ public class ORMTest {
     public void testCreateTableNotInTransaction() {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      assertThrows(IllegalStateException.class, () -> createTable(Furniture.class));
+      assertThrows(IllegalStateException.class, () -> ORM.createTable(Furniture.class));
     }
 
     @Test @Tag("Q3")
@@ -288,13 +283,11 @@ public class ORMTest {
           }
         }
       }
-      interface SimpleRepository extends Repository<Static.InvalidTableName, Long> { }
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(SimpleRepository.class);
       assertThrows(SQLException.class, () -> {
-        transaction(dataSource, () -> createTable(Static.InvalidTableName.class));
+        ORM.transaction(dataSource, () -> ORM.createTable(Static.InvalidTableName.class));
       });
     }
 
@@ -302,7 +295,7 @@ public class ORMTest {
     public void testCreateTableNull() {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      assertThrows(NullPointerException.class, () -> createTable(null));
+      assertThrows(NullPointerException.class, () -> ORM.createTable(null));
     }
   }
 
@@ -335,8 +328,8 @@ public class ORMTest {
       record Column(String name, String typeName, int size, boolean isNullable, boolean isAutoIncrement) {}
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      transaction(dataSource, () -> {
-        createTable(Company.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Company.class);
         var set = new HashSet<Column>();
         var connection = ORM.currentConnection();
         var metaData = connection.getMetaData();
@@ -424,8 +417,8 @@ public class ORMTest {
       record Column(String name, String typeName, int size, boolean isNullable, boolean isAutoIncrement) {}
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      transaction(dataSource, () -> {
-        createTable(Point.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Point.class);
         var set = new HashSet<Column>();
         var connection = ORM.currentConnection();
         var metaData = connection.getMetaData();
@@ -455,8 +448,8 @@ public class ORMTest {
       record Column(String name, String typeName, int size, boolean isNullable, boolean isAutoIncrement) {}
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      transaction(dataSource, () -> {
-        createTable(User.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(User.class);
         var set = new HashSet<Column>();
         var connection = ORM.currentConnection();
         var metaData = connection.getMetaData();
@@ -480,6 +473,7 @@ public class ORMTest {
       });
     }
 
+    @SuppressWarnings("unused")
     @Table("USER2")
     static final class AnotherUser {
       private Long id;
@@ -502,8 +496,8 @@ public class ORMTest {
       record Column(String name, String typeName, int size, boolean isNullable, boolean isAutoIncrement) {}
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      transaction(dataSource, () -> {
-        createTable(AnotherUser.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(AnotherUser.class);
         var set = new HashSet<Column>();
         var connection = ORM.currentConnection();
         var metaData = connection.getMetaData();
@@ -580,21 +574,21 @@ public class ORMTest {
     public void testFindAllEmptyTable() throws SQLException {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      transaction(dataSource, () -> {
-        createTable(Person.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Person.class);
         interface PersonRepository extends Repository<Person, Long> {}
-        var repository = createRepository(PersonRepository.class);
+        var repository = ORM.createRepository(PersonRepository.class);
         var persons = repository.findAll();
         assertEquals(List.of(), persons);
       });
     }
 
     @Test @Tag("Q6")
-    public void testFindAllOutsideATransaction() throws SQLException {
+    public void testFindAllOutsideATransaction() {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
       interface PersonRepository extends Repository<Person, Long> {}
-      var repository = createRepository(PersonRepository.class);
+      var repository = ORM.createRepository(PersonRepository.class);
       assertThrows(IllegalStateException.class, repository::findAll);
     }
 
@@ -603,8 +597,8 @@ public class ORMTest {
       interface PersonRepository extends Repository<Person, Long> { }
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      transaction(dataSource, () -> {
-        var repository = createRepository(PersonRepository.class);
+      ORM.transaction(dataSource, () -> {
+        var repository = ORM.createRepository(PersonRepository.class);
         assertAll(
             () -> assertThrows(UnsupportedOperationException.class, () -> repository.equals(null)),
             () -> assertThrows(UnsupportedOperationException.class, repository::hashCode),
@@ -621,8 +615,8 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(WeirdRepository.class);
-      transaction(dataSource, () -> {
+      var repository = ORM.createRepository(WeirdRepository.class);
+      ORM.transaction(dataSource, () -> {
         assertThrows(IllegalStateException.class, () -> repository.weirdMethod("weird"));
       });
     }
@@ -631,7 +625,7 @@ public class ORMTest {
     public void testRepositoryNull() {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      assertThrows(NullPointerException.class, () -> createRepository(null));
+      assertThrows(NullPointerException.class, () -> ORM.createRepository(null));
     }
   }
 
@@ -643,8 +637,8 @@ public class ORMTest {
     public void testToEntityClass() throws SQLException {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      transaction(dataSource, () -> {
-        createTable(Person.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Person.class);
         var connection = ORM.currentConnection();
         var update = """
           INSERT INTO PERSON (ID, NAME) VALUES (42, 'scott tiger');
@@ -673,8 +667,8 @@ public class ORMTest {
     public void testFindAll() throws SQLException {
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      transaction(dataSource, () -> {
-        createTable(Person.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Person.class);
         var connection = ORM.currentConnection();
         var update = """
           INSERT INTO PERSON (ID, NAME) VALUES (1, 'john');
@@ -700,9 +694,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(PersonRepository.class);
-      transaction(dataSource, () -> {
-        createTable(Person.class);
+      var repository = ORM.createRepository(PersonRepository.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Person.class);
         var connection = ORM.currentConnection();
         var update = """
           INSERT INTO PERSON (ID, NAME) VALUES (1, 'iga');
@@ -741,8 +735,8 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(SimpleRepository.class);
-      assertThrows(SQLException.class, () -> transaction(dataSource, repository::findAll));
+      var repository = ORM.createRepository(SimpleRepository.class);
+      assertThrows(SQLException.class, () -> ORM.transaction(dataSource, repository::findAll));
     }
   }
 
@@ -762,10 +756,10 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(PersonRepository.class);
-      transaction(dataSource, () -> {
-        createTable(Person.class);
-        var connection = currentConnection();
+      var repository = ORM.createRepository(PersonRepository.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Person.class);
+        var connection = ORM.currentConnection();
         var beanInfo = Utils.beanInfo(Person.class);
         var bean = new Person(1L, "Ana");
         ORM.save(connection, "PERSON", beanInfo, bean, null);
@@ -780,9 +774,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(PersonRepository.class);
-      transaction(dataSource, () -> {
-        createTable(Person.class);
+      var repository = ORM.createRepository(PersonRepository.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Person.class);
         repository.save(new Person(1L, "Bob"));
         var all = repository.findAll();
         assertEquals(List.of(new Person(1L, "Bob")), all);
@@ -795,9 +789,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(PersonRepository.class);
-      transaction(dataSource, () -> {
-        createTable(Person.class);
+      var repository = ORM.createRepository(PersonRepository.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Person.class);
         LongStream.range(0, 5)
             .mapToObj(i -> new Person(i, "person" + i))
             .forEach(repository::save);
@@ -838,9 +832,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(DataRepository.class);
-      transaction(dataSource, () -> {
-        createTable(Data.class);
+      var repository = ORM.createRepository(DataRepository.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Data.class);
         var data1 = repository.save(new Data());
         assertEquals("1", data1.id);
         var data2 = repository.save(new Data());
@@ -900,9 +894,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(AccountRepository.class);
-      transaction(dataSource, () -> {
-        createTable(Account.class);
+      var repository = ORM.createRepository(AccountRepository.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Account.class);
         repository.save(new Account(1, 867));
         repository.save(new Account(10, -687));
         repository.save(new Account(10, 501));
@@ -971,7 +965,7 @@ public class ORMTest {
     public static final class NoId { }
 
     @Test @Tag("Q11")
-    public void testFindId() throws SQLException {
+    public void testFindId() {
       var beanInfo = Utils.beanInfo(Person.class);
       var property = ORM.findId(Person.class, beanInfo);
       assertEquals("id", property.getName());
@@ -983,9 +977,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(PersonRepository.class);
-      transaction(dataSource, () -> {
-        createTable(Person.class);
+      var repository = ORM.createRepository(PersonRepository.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Person.class);
         repository.save(new Person(1L, "iga"));
         repository.save(new Person(2L, "biva"));
         var person = repository.findById(2L).orElseThrow();
@@ -999,9 +993,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(PersonRepository.class);
-      transaction(dataSource, () -> {
-        createTable(Person.class);
+      var repository = ORM.createRepository(PersonRepository.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Person.class);
         repository.save(new Person(1L, "iga"));
         repository.save(new Person(2L, "biva"));
         var person = repository.findById(888L);
@@ -1010,7 +1004,7 @@ public class ORMTest {
     }
 
     @Test @Tag("Q11")
-    public void testFindNoId() throws SQLException {
+    public void testFindNoId() {
       var beanInfo = Utils.beanInfo(NoId.class);
       assertNull(ORM.findId(NoId.class, beanInfo));
     }
@@ -1021,9 +1015,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(VoidRepository.class);
-      transaction(dataSource, () -> {
-        createTable(NoId.class);
+      var repository = ORM.createRepository(VoidRepository.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(NoId.class);
         assertEquals(List.of(), repository.findAll());
       });
     }
@@ -1042,9 +1036,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(PersonRepository.class);
-      transaction(dataSource, () -> {
-        createTable(Account.class);
+      var repository = ORM.createRepository(PersonRepository.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Account.class);
         repository.save(new Account(1, 123));
         repository.save(new Account(2, 567));
         var list = repository.findAllAccount();
@@ -1064,9 +1058,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(PersonRepository.class);
-      transaction(dataSource, () -> {
-        createTable(Person.class);
+      var repository = ORM.createRepository(PersonRepository.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Person.class);
         repository.save(new Person(1L, "Bob"));
         repository.save(new Person(2L, "Ana"));
         repository.save(new Person(3L, "John"));
@@ -1085,9 +1079,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(UserRepository.class);
-      transaction(dataSource, () -> {
-        createTable(Pet.class);
+      var repository = ORM.createRepository(UserRepository.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Pet.class);
         repository.save(new Pet(1L, "Scooby", 50));
         repository.save(new Pet(2L, "Scrappy", 35));
         repository.save(new Pet(3L, "Scooby", 12));
@@ -1107,21 +1101,21 @@ public class ORMTest {
   class Q13 {
 
     @Test @Tag("Q13")
-    public void testFindPropertyBalance() throws SQLException {
+    public void testFindPropertyBalance() {
       var beanInfo = Utils.beanInfo(Account.class);
       var property = ORM.findProperty(Account.class, beanInfo, "balance");
       assertEquals("balance", property.getName());
     }
 
     @Test @Tag("Q13")
-    public void testFindPropertyId() throws SQLException {
+    public void testFindPropertyId() {
       var beanInfo = Utils.beanInfo(Account.class);
       var property = ORM.findProperty(Account.class, beanInfo, "id");
       assertEquals("id", property.getName());
     }
 
     @Test @Tag("Q13")
-    public void testFindNoProperty() throws SQLException {
+    public void testFindNoProperty() {
       var beanInfo = Utils.beanInfo(Account.class);
       assertThrows(IllegalStateException.class, () ->  ORM.findProperty(Account.class, beanInfo, "noproperty"));
     }
@@ -1134,9 +1128,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(PersonRepository.class);
-      transaction(dataSource, () -> {
-        createTable(Account.class);
+      var repository = ORM.createRepository(PersonRepository.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Account.class);
         repository.save(new Account(1, 123));
         repository.save(new Account(2, 567));
         var account = repository.findByBalance("123").orElseThrow();
@@ -1152,9 +1146,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(PersonRepository.class);
-      transaction(dataSource, () -> {
-        createTable(Person.class);
+      var repository = ORM.createRepository(PersonRepository.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Person.class);
         repository.save(new Person(1L, "iga"));
         repository.save(new Person(2L, "biva"));
         var person = repository.findByName("biva").orElseThrow();
@@ -1216,9 +1210,9 @@ public class ORMTest {
 
       var dataSource = new JdbcDataSource();
       dataSource.setURL("jdbc:h2:mem:test");
-      var repository = createRepository(CountryRepository.class);
-      transaction(dataSource, () -> {
-        createTable(Country.class);
+      var repository = ORM.createRepository(CountryRepository.class);
+      ORM.transaction(dataSource, () -> {
+        ORM.createTable(Country.class);
         repository.save(new Country("France"));
         repository.save(new Country("Spain"));
         repository.save(new Country("Australia"));
