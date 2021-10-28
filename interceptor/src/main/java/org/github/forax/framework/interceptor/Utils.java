@@ -13,7 +13,7 @@ final class Utils {
     throw new AssertionError();
   }
 
-  public static Object invokeMethod(Object object, Method method, Object... args) throws Exception {
+  public static Object invokeMethod(Object object, Method method, Object... args) throws Throwable {
     try {
       return method.invoke(object, args);
     } catch (IllegalArgumentException e) {

@@ -1,5 +1,6 @@
 package org.github.forax.framework.interceptor;
 
+import org.github.forax.framework.interceptor.InterceptorRegistryTest.Q7.Example1;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -535,6 +536,28 @@ public class InterceptorRegistryTest {
 
 
   @Nested
+  class Q6 {
+    @Test @Tag("Q6")
+    public void cacheCorrectlyInvalidated() {
+      interface Foo {
+        @Example1
+        default String hello(String message) {
+          return message;
+        }
+      }
+      var registry = new InterceptorRegistry();
+      registry.addInterceptor(Example1.class, (o, m, args, next) -> "1" + next.proceed(o, m, args));
+      var proxy1 = registry.createProxy(Foo.class, new Foo(){});
+      proxy1.hello("");  // interceptor list is cached
+
+      registry.addInterceptor(Example1.class, (o, m, args, next) -> "2" + next.proceed(o, m, args));
+      var proxy2 = registry.createProxy(Foo.class, new Foo() {});
+      assertEquals("12", proxy2.hello(""));
+    }
+  }  // end of Q6
+
+
+  @Nested
   public class Q7 {
 
     @Retention(RUNTIME)
@@ -561,24 +584,6 @@ public class InterceptorRegistryTest {
       registry.addInterceptor(Example3.class, (o, m, args, next) -> "3" + next.proceed(o, m, args));
       var foo = registry.createProxy(Foo.class, new Foo() {});
       assertEquals("123", foo.hello(""));
-    }
-
-    @Test @Tag("Q7")
-    public void cacheCorrectlyInvalidated() {
-      interface Foo {
-        @Example1
-        default String hello(String message) {
-          return message;
-        }
-      }
-      var registry = new InterceptorRegistry();
-      registry.addInterceptor(Example1.class, (o, m, args, next) -> "1" + next.proceed(o, m, args));
-      var proxy1 = registry.createProxy(Foo.class, new Foo(){});
-      proxy1.hello("");  // interceptor list is cached
-
-      registry.addInterceptor(Example1.class, (o, m, args, next) -> "2" + next.proceed(o, m, args));
-      var proxy2 = registry.createProxy(Foo.class, new Foo() {});
-      assertEquals("12", proxy2.hello(""));
     }
 
     @Test @Tag("Q7")
