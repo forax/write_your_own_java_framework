@@ -45,12 +45,12 @@ public class InterceptorRegistryTest {
       var registry = new InterceptorRegistry();
       registry.addAroundAdvice(CheckNotNull.class, new AroundAdvice() {
         @Override
-        public void pre(Object delegate, Method method, Object[] args) {
+        public void before(Object delegate, Method method, Object[] args) {
           Arrays.stream(args).forEach(Objects::requireNonNull);
         }
 
         @Override
-        public void post(Object delegate, Method method, Object[] args, Object result) {}
+        public void after(Object delegate, Method method, Object[] args, Object result) {}
       });
       var proxy = registry.createProxy(Hello.class, hello);
       assertAll(
@@ -75,7 +75,7 @@ public class InterceptorRegistryTest {
       var registry = new InterceptorRegistry();
       registry.addAroundAdvice(Tagged.class, new AroundAdvice() {
         @Override
-        public void pre(Object delegate, Method method, Object[] args) {
+        public void before(Object delegate, Method method, Object[] args) {
           assertAll(
               () -> assertEquals(sum, delegate),
               () -> assertEquals(add, method),
@@ -84,7 +84,7 @@ public class InterceptorRegistryTest {
         }
 
         @Override
-        public void post(Object delegate, Method method, Object[] args, Object result) {
+        public void after(Object delegate, Method method, Object[] args, Object result) {
           assertAll(
               () -> assertEquals(sum, delegate),
               () -> assertEquals(add, method),
@@ -101,9 +101,9 @@ public class InterceptorRegistryTest {
     public void addAroundAdvicePreconditions() {
       var advice = new AroundAdvice() {
         @Override
-        public void pre(Object delegate, Method method, Object[] args) {}
+        public void before(Object delegate, Method method, Object[] args) {}
         @Override
-        public void post(Object delegate, Method method, Object[] args, Object result) {}
+        public void after(Object delegate, Method method, Object[] args, Object result) {}
       };
       var registry = new InterceptorRegistry();
       assertAll(
@@ -180,11 +180,11 @@ public class InterceptorRegistryTest {
     public void withTwoAdvices() {
       record ModifyParameterAroundAdvice(int index, Object value) implements AroundAdvice {
         @Override
-        public void pre(Object instance, Method method, Object[] args) {
+        public void before(Object instance, Method method, Object[] args) {
           args[index] = value;
         }
         @Override
-        public void post(Object instance, Method method, Object[] args, Object result) {}
+        public void after(Object instance, Method method, Object[] args, Object result) {}
       }
 
       interface Hello {
@@ -275,7 +275,7 @@ public class InterceptorRegistryTest {
       var empty = new Empty();
       var method = Empty.class.getMethod("identity", int.class);
 
-      assertEquals(42, invocation.invoke(empty, method, new Object[] { 42 }));
+      assertEquals(42, invocation.proceed(empty, method, new Object[] { 42 }));
     }
 
     @Test @Tag("Q4")
@@ -302,7 +302,7 @@ public class InterceptorRegistryTest {
 
       var interceptor = new StopInterceptor();
       var invocation = InterceptorRegistry.getInvocation(List.of(interceptor));
-      assertEquals(314, invocation.invoke(empty, identity, new Object[] { 42 }));
+      assertEquals(314, invocation.proceed(empty, identity, new Object[] { 42 }));
     }
 
     @Test @Tag("Q4")
@@ -323,7 +323,7 @@ public class InterceptorRegistryTest {
               () -> assertEquals(identity, method),
               () -> assertEquals(List.of(42), List.of(args))
           );
-          return invocation.invoke(instance, method, args);
+          return invocation.proceed(instance, method, args);
         }
       }
 
@@ -332,7 +332,7 @@ public class InterceptorRegistryTest {
 
       var invocation = InterceptorRegistry.getInvocation(List.of(interceptor1, interceptor2));
 
-      assertEquals(42, invocation.invoke(empty, identity, new Object[] { 42 }));
+      assertEquals(42, invocation.proceed(empty, identity, new Object[] { 42 }));
     }
   }  // end of Q4
 
@@ -417,7 +417,7 @@ public class InterceptorRegistryTest {
               () -> assertEquals(identity, method),
               () -> assertEquals(List.of(42), List.of(args))
           );
-          return invocation.invoke(instance, method, args);
+          return invocation.proceed(instance, method, args);
         }
       }
 
@@ -459,7 +459,7 @@ public class InterceptorRegistryTest {
 
       var registry = new InterceptorRegistry();
       registry.addInterceptor(BarAnn.class, (o, m, args, next) -> 404);
-      registry.addInterceptor(WhizzAnn.class, (o, m, args, next) -> "*" + next.invoke(o, m, args) + "*");
+      registry.addInterceptor(WhizzAnn.class, (o, m, args, next) -> "*" + next.proceed(o, m, args) + "*");
       Foo foo = registry.createProxy(Foo.class, new FooImpl());
       assertAll(
           () -> assertEquals(404, foo.bar()),
@@ -515,13 +515,12 @@ public class InterceptorRegistryTest {
 
       var registry = new InterceptorRegistry();
       registry.addInterceptor(Data.class, (instance, method, args, invocation) -> {
-        return switch (method.getName()) {
-          case "unchecked" -> throw new RuntimeException();
-          case "checked" -> throw new IOException();
-          case "error" -> throw new IOError(new IOException());
-          case "throwable" -> throw new Throwable();
-          // default -> throw new AssertionError("fail !"); does not compile :(
-          default -> new Object() { Object run() { throw new AssertionError("fail !"); }}.run();
+        throw switch (method.getName()) {
+          case "unchecked" -> new RuntimeException();
+          case "checked" -> new IOException();
+          case "error" -> new IOError(new IOException());
+          case "throwable" -> new Throwable();
+          default -> new AssertionError("fail !");
         };
       });
       var proxy = registry.createProxy(Foo.class, new Foo() {});
@@ -557,9 +556,9 @@ public class InterceptorRegistryTest {
         }
       }
       var registry = new InterceptorRegistry();
-      registry.addInterceptor(Example1.class, (o, m, args, next) -> "1" + next.invoke(o, m, args));
-      registry.addInterceptor(Example2.class, (o, m, args, next) -> "2" + next.invoke(o, m, args));
-      registry.addInterceptor(Example3.class, (o, m, args, next) -> "3" + next.invoke(o, m, args));
+      registry.addInterceptor(Example1.class, (o, m, args, next) -> "1" + next.proceed(o, m, args));
+      registry.addInterceptor(Example2.class, (o, m, args, next) -> "2" + next.proceed(o, m, args));
+      registry.addInterceptor(Example3.class, (o, m, args, next) -> "3" + next.proceed(o, m, args));
       var foo = registry.createProxy(Foo.class, new Foo() {});
       assertEquals("123", foo.hello(""));
     }
@@ -573,11 +572,11 @@ public class InterceptorRegistryTest {
         }
       }
       var registry = new InterceptorRegistry();
-      registry.addInterceptor(Example1.class, (o, m, args, next) -> "1" + next.invoke(o, m, args));
+      registry.addInterceptor(Example1.class, (o, m, args, next) -> "1" + next.proceed(o, m, args));
       var proxy1 = registry.createProxy(Foo.class, new Foo(){});
       proxy1.hello("");  // interceptor list is cached
 
-      registry.addInterceptor(Example1.class, (o, m, args, next) -> "2" + next.invoke(o, m, args));
+      registry.addInterceptor(Example1.class, (o, m, args, next) -> "2" + next.proceed(o, m, args));
       var proxy2 = registry.createProxy(Foo.class, new Foo() {});
       assertEquals("12", proxy2.hello(""));
     }
@@ -592,7 +591,7 @@ public class InterceptorRegistryTest {
         }
       }
       var registry = new InterceptorRegistry();
-      registry.addInterceptor(Example1.class, (o, m, args, next) -> "-" + next.invoke(o, m, args) + "-");
+      registry.addInterceptor(Example1.class, (o, m, args, next) -> "-" + next.proceed(o, m, args) + "-");
       var foo = registry.createProxy(Foo.class, new Foo() {});
       assertEquals("-hello-", foo.hello("hello"));
     }

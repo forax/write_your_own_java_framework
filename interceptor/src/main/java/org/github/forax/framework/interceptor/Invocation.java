@@ -4,5 +4,5 @@ import java.lang.reflect.Method;
 
 @FunctionalInterface
 public interface Invocation {
-  Object invoke(Object instance, Method method, Object[] args) throws Throwable;
+  Object proceed(Object instance, Method method, Object[] args) throws Throwable;
 }

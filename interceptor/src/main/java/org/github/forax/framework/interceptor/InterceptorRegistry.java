@@ -53,9 +53,9 @@ public final class InterceptorRegistry {
     Objects.requireNonNull(annotationClass, "annotationClass is null");
     Objects.requireNonNull(advice, "advice is null");
     addInterceptor(annotationClass, (instance, method, args, invocation) -> {
-      advice.pre(instance, method, args);
-      var result = invocation.invoke(instance, method, args);
-      advice.post(instance, method, args, result);
+      advice.before(instance, method, args);
+      var result = invocation.proceed(instance, method, args);
+      advice.after(instance, method, args, result);
       return result;
     });
   }
@@ -97,6 +97,6 @@ public final class InterceptorRegistry {
     Objects.requireNonNull(instance, "instance is null");
     return type.cast(Proxy.newProxyInstance(type.getClassLoader(),
         new Class<?>[] { type },
-        (proxy, method, args) -> getInvocationFromCache(method).invoke(instance, method, args)));
+        (proxy, method, args) -> getInvocationFromCache(method).proceed(instance, method, args)));
   }
 }
