@@ -11,47 +11,64 @@ import java.util.Objects;
 import java.util.stream.Stream;
 
 public final class InterceptorRegistry {
-  private final HashMap<Class<?>, List<Interceptor>> interceptorMap = new HashMap<>();
-  private final HashMap<Method, Fun> funCache = new HashMap<>();
+  /*
+  private final HashMap<Class<?>, List<AroundAdvice>> adviceMap = new HashMap<>();
 
-  public void addInterceptor(Class<? extends Annotation> annotationClass, Interceptor interceptor) {
-    Objects.requireNonNull(annotationClass);
-    Objects.requireNonNull(interceptor);
-    interceptorMap.computeIfAbsent(annotationClass, __ -> new ArrayList<>()).add(interceptor);
-    funCache.clear();
+  public void addAroundAdvice(Class<? extends Annotation> annotationClass, AroundAdvice advice) {
+    Objects.requireNonNull(annotationClass, "annotationClass is null");
+    Objects.requireNonNull(advice, "advice is null");
+    adviceMap.computeIfAbsent(annotationClass, __ -> new ArrayList<>()).add(advice);
   }
 
-  private static Object invokeDelegate(Object delegate, Method method, Object[] args) throws Exception {
-    if (delegate == null) {
-      return Utils.defaultValue(method.getReturnType());
-    }
-    return Utils.invokeMethod(delegate, method, args);
+  // package private for test
+  List<AroundAdvice> findAdvices(Method method) {
+    return Arrays.stream(method.getAnnotations())
+        .flatMap(annotation -> adviceMap.getOrDefault(annotation.annotationType(), List.of()).stream())
+        .toList();
   }
 
-  @FunctionalInterface
-  private interface Fun {
-    Object apply(Object proxy, Object[] args, Object delegate) throws Exception;
-  }
-
-  private Fun getFun(Stream<Interceptor> interceptors, Method method) {
-    return Utils.reverseList(interceptors.toList()).stream()
-        .reduce((__, args, delegate) -> invokeDelegate(delegate, method, args),
-            (fun, interceptor) -> (proxy, args, delegate) -> interceptor.intercept(method, proxy, args, () -> fun.apply(proxy, args, delegate)),
-            (_1, _2) -> { throw new AssertionError(); });
-  }
-
-  private Fun getFunFromCache(Method method) {
-    return funCache.computeIfAbsent(method, m -> getFun(findInterceptors(m), m));
-  }
-
-  public <T> T createProxy(Class<T> type, T delegate) {
+  public <T> T createProxy(Class<T> type, T instance) {
+    Objects.requireNonNull(type, "type is null");
+    Objects.requireNonNull(instance, "instance is null");
     return type.cast(Proxy.newProxyInstance(type.getClassLoader(),
         new Class<?>[] { type },
-        (proxy, method, args) -> getFunFromCache(method).apply(proxy, args, delegate)));
+        (proxy, method, args) -> {
+          var advices = findAdvices(method);
+          for (var advice: advices) {
+            advice.pre(instance, method, args);
+          }
+          var result = Utils.invokeMethod(instance, method, args);
+          for (var advice: advices) {
+            advice.post(instance, method, args, result);
+          }
+          return result;
+        }));
+  }*/
+
+
+  private final HashMap<Class<?>, List<Interceptor>> interceptorMap = new HashMap<>();
+  private final HashMap<Method, Invocation> invocationCache = new HashMap<>();
+
+  public void addAroundAdvice(Class<? extends Annotation> annotationClass, AroundAdvice advice) {
+    Objects.requireNonNull(annotationClass, "annotationClass is null");
+    Objects.requireNonNull(advice, "advice is null");
+    addInterceptor(annotationClass, (instance, method, args, invocation) -> {
+      advice.pre(instance, method, args);
+      var result = invocation.invoke(instance, method, args);
+      advice.post(instance, method, args, result);
+      return result;
+    });
+  }
+
+  public void addInterceptor(Class<? extends Annotation> annotationClass, Interceptor interceptor) {
+    Objects.requireNonNull(annotationClass, "annotationClass is null");
+    Objects.requireNonNull(interceptor, "interceptor is null");
+    interceptorMap.computeIfAbsent(annotationClass, __ -> new ArrayList<>()).add(interceptor);
+    invocationCache.clear();
   }
 
   // package private
-  Stream<Interceptor> findInterceptors(Method method) {
+  List<Interceptor> findInterceptors(Method method) {
     return Stream.of(
             Arrays.stream(method.getDeclaringClass().getAnnotations()),
             Arrays.stream(method.getAnnotations()),
@@ -59,6 +76,27 @@ public final class InterceptorRegistry {
         .flatMap(s -> s)
         .map(Annotation::annotationType)
         .distinct()
-        .flatMap(annotationType -> interceptorMap.getOrDefault(annotationType, List.of()).stream());
+        .flatMap(annotationType -> interceptorMap.getOrDefault(annotationType, List.of()).stream())
+        .toList();
+  }
+
+  // package private
+  static Invocation getInvocation(List<Interceptor> interceptors) {
+    return Utils.reverseList(interceptors).stream()
+        .reduce(Utils::invokeMethod,
+            (invocation, interceptor) -> (instance, method, args) -> interceptor.intercept(instance, method, args, invocation),
+            (_1, _2) -> { throw new AssertionError(); });
+  }
+
+  private Invocation getInvocationFromCache(Method method) {
+    return invocationCache.computeIfAbsent(method, m -> getInvocation(findInterceptors(m)));
+  }
+
+  public <T> T createProxy(Class<T> type, T instance) {
+    Objects.requireNonNull(type, "type is null");
+    Objects.requireNonNull(instance, "instance is null");
+    return type.cast(Proxy.newProxyInstance(type.getClassLoader(),
+        new Class<?>[] { type },
+        (proxy, method, args) -> getInvocationFromCache(method).invoke(instance, method, args)));
   }
 }

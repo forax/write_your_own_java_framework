@@ -5,5 +5,5 @@ import java.util.concurrent.Callable;
 
 @FunctionalInterface
 public interface Interceptor {
-  Object intercept(Method method, Object proxy, Object[] args, Callable<?> proceed) throws Exception;
+  Object intercept(Object instance, Method method, Object[] args, Invocation invocation) throws Throwable;
 }

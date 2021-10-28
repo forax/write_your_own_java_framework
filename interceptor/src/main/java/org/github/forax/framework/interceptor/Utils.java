@@ -13,13 +13,6 @@ final class Utils {
     throw new AssertionError();
   }
 
-  private static final Map<String, Object> DEFAULT_VALUES = Map.of(
-      "Z", false, "B", (byte) 0, "C", '\0', "S", (short) 0, "I", 0, "J", 0L, "F", 0f, "D", 0.);
-
-  public static Object defaultValue(Class<?> type) {
-    return DEFAULT_VALUES.get(type.descriptorString());
-  }
-
   public static Object invokeMethod(Object object, Method method, Object... args) throws Exception {
     try {
       return method.invoke(object, args);
