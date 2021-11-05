@@ -1,7 +1,7 @@
 # Annotation classpath scanning
 
 This is the part 2 of the implementation of an injector,
-it reuses the code written for the [part 1](README.md).
+it reuses the code written for the [part 1](README.md) (only in the tests).
 
 The idea of the classpath scanning is to find all classes of a package annotated with some pre-registered annotation
 types, and auto-automatically execute the action corresponding to the annotation on those classes.
