@@ -162,3 +162,8 @@ The unit tests are in [InjectorRegistryTest.java](src/test/java/com/github/forax
    Modify the code that instantiate the `providerClass` to use that constructor to
    creates an instance.
    Then check that the tests in the nested class "Q6" all pass.
+
+7. To finish, we want to add a user-friendly overload of `registerProviderClass`,
+   `registerProviderClass(providerClass)` that takes only a `providerClass`
+   and is equivalent to `registerProviderClass(providerClass, providerClass)`.
+   

@@ -170,3 +170,15 @@ public final class InjectorRegistry {
   }
 ```
 
+
+### Q7
+
+```java
+  public void registerProviderClass(Class<?> providerClass) {
+    registerProviderClassImpl(providerClass);
+  }
+
+  private <T> void registerProviderClassImpl(Class<T> providerClass) {
+    registerProviderClass(providerClass, providerClass);
+  }
+```

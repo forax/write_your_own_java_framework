@@ -109,4 +109,12 @@ public final class InjectorRegistry {
       return instance;
     });
   }
+
+  public void registerProviderClass(Class<?> providerClass) {
+    registerProviderClassImpl(providerClass);
+  }
+
+  private <T> void registerProviderClassImpl(Class<T> providerClass) {
+    registerProviderClass(providerClass, providerClass);
+  }
 }
