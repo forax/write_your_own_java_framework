@@ -60,7 +60,7 @@ For the implementation,
 with as parameter a package name with the dots ('.') replaced by slash ('/')  returns all the `URL`s of the folders
 containing the classes (you can have more than one folder, by example one folder in src and one folder in test).
 
-[Class.forName(name, /*initialize=*/ false, classloader)](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Class.html#forName(java.lang.String,boolean,java.lang.ClassLoader))
+[Class.forName](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Class.html#forName(java.lang.String,boolean,java.lang.ClassLoader))(name, /*initialize=*/ false, classloader)
 loads a `Class`without initializing the class (without running its static block).
 
 Those two methods are already available in the class [Utils2.java](src/main/java/com/github/forax/framework/injector/Utils2.java)
