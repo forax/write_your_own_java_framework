@@ -6,6 +6,6 @@
       <entry key="PlantUMLLanguageExtension" value="false" />
     </enabledExtensions>
     <option name="hideErrorsInCodeBlocks" value="true" />
-    <option name="stateVersion" value="1" />
+    <option name="splitLayout" value="SHOW_EDITOR" />
   </component>
 </project>
