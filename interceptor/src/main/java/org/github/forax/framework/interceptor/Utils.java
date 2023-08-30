@@ -29,19 +29,4 @@ final class Utils {
   private static <T extends Throwable> AssertionError rethrow(Throwable cause) throws T {
     throw (T) cause;
   }
-
-  public static <T> List<T> reverseList(List<T> list) {
-    assert list instanceof RandomAccess;
-    return new AbstractList<>() {
-      @Override
-      public T get(int i) {
-        return list.get(list.size() - 1 - i);
-      }
-
-      @Override
-      public int size() {
-        return list.size();
-      }
-    };
-  }
 }

@@ -254,7 +254,7 @@ We add the support of `TypeMatcher`s, the method `addTypeMatcher(typeMatcher)` a
   }
 
   private Collector<?> findCollector(Type type) {
-    for(var typeMatcher: Utils.reverseList(typeMatchers)) {
+    for(var typeMatcher: typeMatchers.reversed()) {
       var collectorOpt = typeMatcher.match(type);
       if (collectorOpt.isPresent()) {
         return collectorOpt.orElseThrow();
@@ -267,7 +267,7 @@ We add the support of `TypeMatcher`s, the method `addTypeMatcher(typeMatcher)` a
 Or using a stream
 ```java
   private Collector<?> findCollector(Type type) {
-    return Utils.reverseList(typeMatchers).stream()
+    return typeMatchers.reversed().stream()
         .flatMap(typeMatcher -> typeMatcher.match(type).stream())
         .findFirst()
         .orElseGet(() -> Collector.bean(Utils.erase(type)));

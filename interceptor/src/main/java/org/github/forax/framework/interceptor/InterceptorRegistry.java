@@ -82,7 +82,7 @@ public final class InterceptorRegistry {
 
   // package private
   static Invocation getInvocation(List<Interceptor> interceptors) {
-    return Utils.reverseList(interceptors).stream()
+    return interceptors.reversed().stream()
         .reduce(Utils::invokeMethod,
             (invocation, interceptor) -> (instance, method, args) -> interceptor.intercept(instance, method, args, invocation),
             (_1, _2) -> { throw new AssertionError(); });

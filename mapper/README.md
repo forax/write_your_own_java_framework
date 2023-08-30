@@ -39,6 +39,7 @@ The unit tests are in [JSONWriterTest.java](src/test/java/com/github/forax/frame
 
 1. Create the class `JSONWriter` and adds the method `toJSON()` that works only with
    JSON primitive values, `null`, `true`, `false`, any integers or doubles and strings.
+   You can use a switch on type for that.
    Then check that the tests in the nested class "Q1" all pass.
 
 2. Adds the support of [Java Beans](../COMPANION.md#java-bean-and-beaninfo) by modifying `toJSON()` to get the `BeanInfo`.

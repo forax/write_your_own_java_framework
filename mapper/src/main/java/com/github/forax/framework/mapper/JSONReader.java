@@ -100,7 +100,7 @@ public class JSONReader {
   }
 
   private Collector<?> findCollector(Type type) {
-    return Utils.reverseList(typeMatchers).stream()
+    return typeMatchers.reversed().stream()
         .flatMap(typeMatcher -> typeMatcher.match(type).stream())
         .findFirst()
         .orElseGet(() -> Collector.bean(Utils.erase(type)));
