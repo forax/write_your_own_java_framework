@@ -68,8 +68,7 @@ public final class JSONWriter {
   public String toJSON(Object o) {
     return switch (o) {
       case null -> "null";
-      case Boolean value -> "" + value;
-      case Number value -> "" + value;
+      case Boolean _, Number _ -> o.toString();
       case String value -> "\"" + value + "\"";
       default -> {
         var type = o.getClass();
