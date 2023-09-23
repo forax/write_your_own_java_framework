@@ -88,7 +88,7 @@ public final class InjectorRegistry {
         .toList();
     return switch(constructors.size()) {
       case 0 -> Optional.empty();
-      case 1 -> Optional.of(constructors.get(0));
+      case 1 -> Optional.of(constructors.getFirst());
       default -> throw new IllegalStateException("more than one constructor annotated with @Inject in " + providerClass.getName());
     };
   }
