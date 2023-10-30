@@ -1,6 +1,7 @@
 package com.github.forax.framework.mapper;
 
 import java.beans.PropertyDescriptor;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayDeque;
@@ -12,76 +13,85 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toMap;
 
 public class JSONReader {
-  public record Collector<B>(Function<? super String, ? extends Type> qualifier,
-                             Supplier<? extends B> supplier, Populater<B> populater, Function<? super B, ?> finisher) {
-    public interface Populater<B> {
-      void populate(B builder, String key, Object value);
+  private record BeanData(Constructor<?> constructor, Map<String, PropertyDescriptor> propertyMap) {
+    PropertyDescriptor findProperty(String key) {
+      var property = propertyMap.get(key);
+      if (property == null) {
+        throw new IllegalStateException("unknown key " + key + " for bean " + constructor.getDeclaringClass().getName());
+      }
+      return property;
+    }
+  }
+
+  private static final ClassValue<BeanData> BEAN_DATA_CLASS_VALUE = new ClassValue<>() {
+    @Override
+    protected BeanData computeValue(Class<?> type) {
+      var beanInfo = Utils.beanInfo(type);
+      var constructor = Utils.defaultConstructor(type);
+      var map = Arrays.stream(beanInfo.getPropertyDescriptors())
+          .filter(property -> !property.getName().equals("class"))
+          .collect(Collectors.toMap(PropertyDescriptor::getName, Function.identity()));
+      return new BeanData(constructor, map);
+    }
+  };
+
+  public record ObjectBuilder<T>(Function<? super String, ? extends Type> typeProvider,
+                                 Supplier<? extends T> supplier,
+                                 Populater<? super T> populater,
+                                 Function<? super T, ?> finisher) {
+    public interface Populater<T> {
+      void populate(T instance, String key, Object value);
     }
 
-    @SuppressWarnings("unchecked")
-    private Collector<Object> raw() {
-      return (Collector<Object>) (Collector<?>) this;
-    }
-
-    public Collector {
-      Objects.requireNonNull(qualifier);
+    public ObjectBuilder {
+      Objects.requireNonNull(typeProvider);
       Objects.requireNonNull(supplier);
       Objects.requireNonNull(populater);
       Objects.requireNonNull(finisher);
     }
 
-    private static PropertyDescriptor findProperty(Map<String, PropertyDescriptor> propertyMap, String key, Class<?> beanClass) {
-      var property = propertyMap.get(key);
-      if (property == null) {
-        throw new IllegalStateException("unknown property '" + key + "' for bean " + beanClass.getName());
-      }
-      return property;
-    }
-
-    public static Collector<Object> bean(Class<?> beanClass) {
+    public static ObjectBuilder<Object> bean(Class<?> beanClass) {
       Objects.requireNonNull(beanClass);
-      var beanInfo = Utils.beanInfo(beanClass);
-      var propertyMap = Arrays.stream(beanInfo.getPropertyDescriptors())
-          .collect(toMap(PropertyDescriptor::getName, property -> property));
-      var constructor = Utils.defaultConstructor(beanClass);
-      return new Collector<>(
-          key -> findProperty(propertyMap, key, beanClass).getWriteMethod().getGenericParameterTypes()[0],
-          () -> Utils.newInstance(constructor),
-          (bean, key, value) -> Utils.invokeMethod(bean, findProperty(propertyMap, key, beanClass).getWriteMethod(), value),
-          bean -> bean
+      var beanData = BEAN_DATA_CLASS_VALUE.get(beanClass);
+      return new ObjectBuilder<>(
+          key -> beanData.findProperty(key).getWriteMethod().getGenericParameterTypes()[0],
+          () -> Utils.newInstance(beanData.constructor),
+          (instance, key, value) -> {
+            var property = beanData.findProperty(key);
+            Utils.invokeMethod(instance, property.getWriteMethod(), value);
+          },
+          Function.identity()
       );
     }
 
-    public static Collector<List<Object>> list(Type element) {
-      Objects.requireNonNull(element);
-      return new Collector<>(__ -> element, ArrayList::new, (list, key, value) -> list.add(value), List::copyOf);
+    public static ObjectBuilder<List<Object>> list(Type elementType) {
+      Objects.requireNonNull(elementType);
+      return new ObjectBuilder<>(
+          key -> elementType,
+          ArrayList::new,
+          (list, key, value) -> list.add(value),
+          List::copyOf
+      );
     }
 
-    private static int findComponentIndex(Map<String, Integer> componentIndexMap, String key, Class<?> recordClass) {
-      var index = componentIndexMap.get(key);
-      if (index == null) {
-        throw new IllegalStateException("unknown component " + key + " for record " + recordClass.getName());
-      }
-      return index;
-    }
-
-    public static Collector<Object[]> record(Class<?> recordClass) {
+    public static ObjectBuilder<Object[]> record(Class<?> recordClass) {
       Objects.requireNonNull(recordClass);
       var components = recordClass.getRecordComponents();
-      var componentIndexMap = IntStream.range(0, components.length)
+      var map = IntStream.range(0, components.length)
           .boxed()
-          .collect(toMap(i -> components[i].getName(), component -> component));
+          .collect(Collectors.toMap(i -> components[i].getName(), Function.identity()));
       var constructor = Utils.canonicalConstructor(recordClass, components);
-      return new Collector<>(
-          key -> components[findComponentIndex(componentIndexMap, key, recordClass)].getGenericType(),
+      return new ObjectBuilder<>(
+          key -> components[map.get(key)].getGenericType(),
           () -> new Object[components.length],
-          (array, key, value) -> array[findComponentIndex(componentIndexMap, key, recordClass)] = value,
+          (array, key, value) -> array[map.get(key)] = value,
           array -> Utils.newInstance(constructor, array)
       );
     }
@@ -89,7 +99,7 @@ public class JSONReader {
 
   @FunctionalInterface
   public interface TypeMatcher {
-    Optional<Collector<?>> match(Type type);
+    Optional<ObjectBuilder<?>> match(Type type);
   }
 
   private final ArrayList<TypeMatcher> typeMatchers = new ArrayList<>();
@@ -99,90 +109,92 @@ public class JSONReader {
     typeMatchers.add(typeMatcher);
   }
 
-  private Collector<?> findCollector(Type type) {
+  ObjectBuilder<?> findObjectBuilder(Type type) {
     return typeMatchers.reversed().stream()
         .flatMap(typeMatcher -> typeMatcher.match(type).stream())
         .findFirst()
-        .orElseGet(() -> Collector.bean(Utils.erase(type)));
+        .orElseGet(() -> ObjectBuilder.bean(Utils.erase(type)));
   }
 
+  private record Context<T>(ObjectBuilder<T> objectBuilder, T result) {
+    private static <T> Context<T> create(ObjectBuilder<T> objectBuilder) {
+      return new Context<>(objectBuilder, objectBuilder.supplier.get());
+    }
 
-  // Q4
-  public <T> T parseJSON(String text, Class<T> beanClass) {
-    return beanClass.cast(parseJSON(text, (Type) beanClass));
+    private void populate(String key, Object value) {
+      objectBuilder.populater.populate(result, key, value);
+    }
+
+    private Object finish() {
+      return objectBuilder.finisher.apply(result);
+    }
   }
 
-  public Object parseJSON(String text, Type type) {
+  public <T> T parseJSON(String text, Class<T> expectedClass) {
+    return expectedClass.cast(parseJSON(text, (Type) expectedClass));
+  }
+
+  public Object parseJSON(String text, Type expectedType) {
     Objects.requireNonNull(text);
-    Objects.requireNonNull(type);
+    Objects.requireNonNull(expectedType);
+    var stack = new ArrayDeque<Context<?>>();
     var visitor = new ToyJSONParser.JSONVisitor() {
-      record Context(Collector<Object> collector, Object data) {}
-
-      private final ArrayDeque<Context> contexts = new ArrayDeque<>();
       private Object result;
-
 
       @Override
       public void value(String key, Object value) {
-        var context = contexts.peek();
-        assert context != null;
-        context.collector.populater.populate(context.data, key, value);
-      }
-
-      private void start(String key) {
-        var context = contexts.peek();
-        var itemType = context == null? type: context.collector.qualifier.apply(key);
-        var collector = findCollector(itemType).raw();
-        var data = collector.supplier.get();
-        contexts.push(new Context(collector, data));
-      }
-
-      private void end(String key) {
-        var context = contexts.pop();
-        var result = context.collector.finisher.apply(context.data);
-        if (contexts.isEmpty()) {
-          this.result = result;
-        } else {
-          var enclosingContext = contexts.peek();
-          enclosingContext.collector.populater.populate(enclosingContext.data, key, result);
-        }
+        var context = stack.peek();
+        context.populate(key, value);
       }
 
       @Override
       public void startObject(String key) {
-        start(key);
+        var context = stack.peek();
+        var type = context == null ? expectedType : context.objectBuilder.typeProvider.apply(key);
+        var objectbuilder = findObjectBuilder(type);
+        stack.push(Context.create(objectbuilder));
       }
+
       @Override
       public void endObject(String key) {
-        end(key);
+        var instance = stack.pop().finish();
+        if (stack.isEmpty()) {
+          result = instance;
+          return;
+        }
+        var context = stack.peek();
+        context.populate(key, instance);
       }
+
       @Override
       public void startArray(String key) {
-        start(key);
+        startObject(key);
       }
+
       @Override
       public void endArray(String key) {
-        end(key);
+        endObject(key);
       }
     };
     ToyJSONParser.parse(text, visitor);
     return visitor.result;
   }
 
-  public interface TypeReference<T> {}
+  public interface TypeReference<T> { }
 
-  private static Type findDeserializerType(Object typeReference) {
+  private static Type findElemntType(TypeReference<?> typeReference) {
     var typeReferenceType = Arrays.stream(typeReference.getClass().getGenericInterfaces())
-        .flatMap(t -> t instanceof ParameterizedType parameterizedType? Stream.of(parameterizedType): Stream.empty())
+        .flatMap(t -> t instanceof ParameterizedType parameterizedType? Stream.of(parameterizedType): null)
         .filter(t -> t.getRawType() == TypeReference.class)
-        .findFirst().orElseThrow(() -> new IllegalArgumentException("invalid TypeReference " + typeReference));
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("invalid TypeReference " + typeReference));
     return typeReferenceType.getActualTypeArguments()[0];
   }
 
-  @SuppressWarnings("unchecked")
   public <T> T parseJSON(String text, TypeReference<T> typeReference) {
-    Objects.requireNonNull(text);
-    Objects.requireNonNull(typeReference);
-    return (T) parseJSON(text, findDeserializerType(typeReference));
+    var elementType = findElemntType(typeReference);
+    @SuppressWarnings("unchecked")
+    var result = (T) parseJSON(text, elementType);
+    return result;
   }
 }

@@ -3,114 +3,115 @@
 ### Q1
 
 ```java
+  private record BeanData(Constructor<?> constructor, Map<String, PropertyDescriptor> propertyMap) {
+    PropertyDescriptor findProperty(String key) {
+      var property = propertyMap.get(key);
+      if (property == null) {
+        throw new IllegalStateException("unknown key " + key + " for bean " + constructor.getDeclaringClass().getName());
+      }
+      return property;
+    }
+  }
+
+  private static final ClassValue<BeanData> BEAN_DATA_CLASS_VALUE = new ClassValue<>() {
+    @Override
+    protected BeanData computeValue(Class<?> type) {
+      var beanInfo = Utils.beanInfo(type);
+      var constructor = Utils.defaultConstructor(type);
+      var map = Arrays.stream(beanInfo.getPropertyDescriptors())
+          .filter(property -> !property.getName().equals("class"))
+          .collect(Collectors.toMap(PropertyDescriptor::getName, Function.identity()));
+      return new BeanData(constructor, map);
+    }
+  };
+
   public <T> T parseJSON(String text, Class<T> beanClass) {
     Objects.requireNonNull(text);
     Objects.requireNonNull(beanClass);
-    var beanInfo = Utils.beanInfo(beanClass);
-    var propertyMap = Arrays.stream(beanInfo.getPropertyDescriptors())
-    .collect(toMap(PropertyDescriptor::getName, property -> property));
-    var constructor = Utils.defaultConstructor(beanClass);
-
     var visitor = new ToyJSONParser.JSONVisitor() {
-      private Object bean = Utils.newInstance(constructor);
-
-      private static PropertyDescriptor findProperty(Map<String, PropertyDescriptor> propertyMap, String key, Class<?> beanClass) {
-        var property = propertyMap.get(key);
-        if (property == null) {
-          throw new IllegalStateException("unknown property '" + key + "' for bean " + beanClass.getName());
-        }
-        return property;
-      }
+      private BeanData beanData;
+      private Object result;
 
       @Override
       public void value(String key, Object value) {
-        var property = findProperty(propertyMap, key, beanClass);
-        Utils.invokeMethod(bean, property.getWriteMethod(), value);
+        var property = beanData.findProperty(key);
+        Utils.invokeMethod(result, property.getWriteMethod(), value);
       }
 
       @Override
       public void startObject(String key) {
-        // do nothing
+        beanData = BEAN_DATA_CLASS_VALUE.get(beanClass);
+        result = Utils.newInstance(beanData.constructor);
       }
+
       @Override
       public void endObject(String key) {
         // do nothing
       }
+
       @Override
       public void startArray(String key) {
-        throw new UnsupportedOperationException("NYI");
+        throw new UnsupportedOperationException("Implemented later");
       }
+
       @Override
       public void endArray(String key) {
-        throw new UnsupportedOperationException("NYI");
+        throw new UnsupportedOperationException("Implemented later");
       }
     };
     ToyJSONParser.parse(text, visitor);
-    return beanClass.cast(visitor.bean);
+    return beanClass.cast(visitor.result);
   }
 ```
 
 ### Q2
 
 ```java
+  private record Context(BeanData beanData, Object result) { }
+
   public <T> T parseJSON(String text, Class<T> beanClass) {
     Objects.requireNonNull(text);
     Objects.requireNonNull(beanClass);
+    var stack = new ArrayDeque<Context>();
     var visitor = new ToyJSONParser.JSONVisitor() {
-      record Context(Map<String, PropertyDescriptor> propertyMap, Object bean) {}
-  
-      private final ArrayDeque<Context> contexts = new ArrayDeque<>();
       private Object result;
-
-      private static PropertyDescriptor findProperty(Map<String, PropertyDescriptor> propertyMap, String key, Class<?> beanClass) {
-        var property = propertyMap.get(key);
-        if (property == null) {
-          //throw new IllegalStateException("unknown property '" + key + "' for bean " + beanClass.getName());
-          throw new IllegalStateException("unknown property '" + key + "'");  // FIXME
-        }
-        return property;
-      }
 
       @Override
       public void value(String key, Object value) {
-        var context = contexts.peek();
-        assert context != null;
-        var property = findProperty(context.propertyMap, key, null); //FIXME null
-        Utils.invokeMethod(context.bean, property.getWriteMethod(), value);
+        var context = stack.peek();
+        var property = context.beanData.findProperty(key);
+        Utils.invokeMethod(context.result, property.getWriteMethod(), value);
       }
 
       @Override
       public void startObject(String key) {
-        var context = contexts.peek();
-        var type = context == null? beanClass: findProperty(context.propertyMap, key, null).getPropertyType();  //FIXME null
-        var beanInfo = Utils.beanInfo(type);
-        var propertyMap = Arrays.stream(beanInfo.getPropertyDescriptors())
-          .collect(toMap(PropertyDescriptor::getName, property -> property));
-        var constructor = Utils.defaultConstructor(type);
-        var bean = Utils.newInstance(constructor);
-        contexts.push(new Context(propertyMap, bean));
+        var context = stack.peek();
+        var type = context == null ? beanClass : context.beanData.findProperty(key).getPropertyType();
+        var beanData = BEAN_DATA_CLASS_VALUE.get(type);
+        var instance = Utils.newInstance(beanData.constructor);
+        stack.push(new Context(beanData, instance));
       }
-      
+
       @Override
       public void endObject(String key) {
-        var context = contexts.pop();
-        var result = context.bean;
-        if (contexts.isEmpty()) {
-          this.result = result;
-        } else {
-          var enclosingContext = contexts.peek();
-          var property = findProperty(enclosingContext.propertyMap, key, null);  //FIXME null
-          Utils.invokeMethod(enclosingContext.bean, property.getWriteMethod(), result);
+        var instance = stack.pop().result;
+        if (stack.isEmpty()) {
+          result = instance;
+          return;
         }
+        var context = stack.peek();
+        var property = context.beanData.findProperty(key);
+        Utils.invokeMethod(context.result, property.getWriteMethod(), instance);
       }
-      
+
       @Override
       public void startArray(String key) {
-        throw new UnsupportedOperationException("NYI");
+        throw new UnsupportedOperationException("Implemented later");
       }
+
       @Override
       public void endArray(String key) {
-        throw new UnsupportedOperationException("NYI");
+        throw new UnsupportedOperationException("Implemented later");
       }
     };
     ToyJSONParser.parse(text, visitor);
@@ -121,103 +122,164 @@
 ### Q3
 
 ```java
-public record Collector<B>(Function<? super String, ? extends Type> qualifier,
-                           Supplier<? extends B> supplier, Populater<B> populater, Function<? super B, ?> finisher) {
-  public interface Populater<B> {
-    void populate(B builder, String key, Object value);
-  }
-
-  @SuppressWarnings("unchecked")
-  private Collector<Object> raw() {
-    return (Collector<Object>) (Collector<?>) this;
-  }
-  
-  public Collector {
-    Objects.requireNonNull(qualifier);
-    Objects.requireNonNull(supplier);
-    Objects.requireNonNull(populater);
-    Objects.requireNonNull(finisher);
-  }
-  
-  private static PropertyDescriptor findProperty(Map<String, PropertyDescriptor> propertyMap, String key, Class<?> beanClass) {
-    var property = propertyMap.get(key);
-    if (property == null) {
-      throw new IllegalStateException("unknown property '" + key + "' for bean " + beanClass.getName());
+  public record ObjectBuilder<T>(Function<? super String, ? extends Class<?>> typeProvider,
+                          Supplier<? extends T> supplier,
+                          Populater<? super T> populater,
+                          Function<? super T, ?> finisher) {
+    public interface Populater<T> {
+      void populate(T instance, String key, Object value);
     }
-    return property;
+
+    public ObjectBuilder {
+      Objects.requireNonNull(typeProvider);
+      Objects.requireNonNull(supplier);
+      Objects.requireNonNull(populater);
+      Objects.requireNonNull(finisher);
+    }
+
+    public static ObjectBuilder<Object> bean(Class<?> beanClass) {
+      Objects.requireNonNull(beanClass);
+      var beanData = BEAN_DATA_CLASS_VALUE.get(beanClass);
+      return new ObjectBuilder<>(
+          key -> beanData.findProperty(key).getPropertyType(),
+          () -> Utils.newInstance(beanData.constructor),
+          (instance, key, value) -> {
+            var property = beanData.findProperty(key);
+            Utils.invokeMethod(instance, property.getWriteMethod(), value);
+          },
+          Function.identity()
+          );
+    }
   }
 
-  public static Collector<Object> bean(Class<?> beanClass) {
+  private record Context(ObjectBuilder<Object> objectBuilder, Object result) {}
+
+  public <T> T parseJSON(String text, Class<T> beanClass) {
+    Objects.requireNonNull(text);
     Objects.requireNonNull(beanClass);
-    var beanInfo = Utils.beanInfo(beanClass);
-    var propertyMap = Arrays.stream(beanInfo.getPropertyDescriptors())
-        .collect(toMap(PropertyDescriptor::getName, property -> property));
-    var constructor = Utils.defaultConstructor(beanClass);
-    return new Collector<>(
-        key -> findProperty(propertyMap, key, beanClass).getWriteMethod().getGenericParameterTypes()[0],
-        () -> Utils.newInstance(constructor),
-        (bean, key, value) -> Utils.invokeMethod(bean, findProperty(propertyMap, key, beanClass).getWriteMethod(), value),
-        bean -> bean
-    );
+    var stack = new ArrayDeque<Context>();
+    var visitor = new ToyJSONParser.JSONVisitor() {
+      private Object result;
+
+      @Override
+      public void value(String key, Object value) {
+        var context = stack.peek();
+        context.objectBuilder.populater.populate(context.result, key, value);
+      }
+
+      @Override
+      public void startObject(String key) {
+        var context = stack.peek();
+        var type = context == null ? beanClass : context.objectBuilder.typeProvider.apply(key);
+        var objectbuilder = ObjectBuilder.bean(type);
+        stack.push(new Context(objectbuilder, objectbuilder.supplier.get()));
+      }
+
+      @Override
+      public void endObject(String key) {
+        var instance = stack.pop().result;
+        if (stack.isEmpty()) {
+          result = instance;
+          return;
+        }
+        var context = stack.peek();
+        context.objectBuilder.populater.populate(context.result, key, instance);
+      }
+
+      @Override
+      public void startArray(String key) {
+        throw new UnsupportedOperationException("Implemented later");
+      }
+
+      @Override
+      public void endArray(String key) {
+        throw new UnsupportedOperationException("Implemented later");
+      }
+    };
+    ToyJSONParser.parse(text, visitor);
+    return beanClass.cast(visitor.result);
   }
-}
 ```
 
 ### Q4
 
 ```java
-   private Collector<?> findCollector(Type type) {
-    return Collector.bean(Utils.erase(type));
-    }
-    
-   public <T> T parseJSON(String text, Class<T> beanClass) {
-     return beanClass.cast(parseJSON(text, (Type) beanClass));
+  public record ObjectBuilder<T>(Function<? super String, ? extends Type> typeProvider,
+                          Supplier<? extends T> supplier,
+                          Populater<? super T> populater,
+                          Function<? super T, ?> finisher) {
+    public interface Populater<T> {
+      void populate(T instance, String key, Object value);
     }
 
-  public Object parseJSON(String text, Type type) {
+    public ObjectBuilder {
+      Objects.requireNonNull(typeProvider);
+      Objects.requireNonNull(supplier);
+      Objects.requireNonNull(populater);
+      Objects.requireNonNull(finisher);
+    }
+
+    public static ObjectBuilder<Object> bean(Class<?> beanClass) {
+      Objects.requireNonNull(beanClass);
+      var beanData = BEAN_DATA_CLASS_VALUE.get(beanClass);
+      return new ObjectBuilder<>(
+          key -> beanData.findProperty(key).getWriteMethod().getGenericParameterTypes()[0],
+          () -> Utils.newInstance(beanData.constructor),
+          (instance, key, value) -> {
+            var property = beanData.findProperty(key);
+            Utils.invokeMethod(instance, property.getWriteMethod(), value);
+          },
+          Function.identity()
+      );
+    }
+  }
+
+  private record Context(ObjectBuilder<Object> objectBuilder, Object result) {}
+
+  public <T> T parseJSON(String text, Class<T> expectedClass) {
+    return expectedClass.cast(parseJSON(text, (Type) expectedClass));
+  }
+
+  public Object parseJSON(String text, Type expectedType) {
     Objects.requireNonNull(text);
-    Objects.requireNonNull(type);
+    Objects.requireNonNull(expectedType);
+    var stack = new ArrayDeque<Context>();
     var visitor = new ToyJSONParser.JSONVisitor() {
-      record Context(Collector<Object> collector, Object data) {}
-
-      private final ArrayDeque<Context> contexts = new ArrayDeque<>();
       private Object result;
-      
+
       @Override
       public void value(String key, Object value) {
-        var context = contexts.peek();
-        assert context != null;
-        context.collector.populater.populate(context.data, key, value);
+        var context = stack.peek();
+        context.objectBuilder.populater.populate(context.result, key, value);
       }
 
       @Override
       public void startObject(String key) {
-        var context = contexts.peek();
-        var itemType = context == null? type: context.collector.qualifier.apply(key);
-        var collector = findCollector(itemType).raw();
-        var data = collector.supplier.get();
-        contexts.push(new Context(collector, data));
+        var context = stack.peek();
+        var type = context == null ? expectedType : context.objectBuilder.typeProvider.apply(key);
+        var objectbuilder = ObjectBuilder.bean(Utils.erase(type));
+        stack.push(new Context(objectbuilder, objectbuilder.supplier.get()));
       }
-     
+
       @Override
       public void endObject(String key) {
-        var context = contexts.pop();
-        var result = context.collector.finisher.apply(context.data);
-        if (contexts.isEmpty()) {
-          this.result = result;
-        } else {
-          var enclosingContext = contexts.peek();
-          enclosingContext.collector.populater.populate(enclosingContext.data, key, result);
+        var instance = stack.pop().result;
+        if (stack.isEmpty()) {
+          result = instance;
+          return;
         }
+        var context = stack.peek();
+        context.objectBuilder.populater.populate(context.result, key, instance);
       }
-  
+
       @Override
       public void startArray(String key) {
-        throw new UnsupportedOperationException("NYI");
+        throw new UnsupportedOperationException("Implemented later");
       }
+
       @Override
       public void endArray(String key) {
-        throw new UnsupportedOperationException("NYI");
+        throw new UnsupportedOperationException("Implemented later");
       }
     };
     ToyJSONParser.parse(text, visitor);
@@ -231,9 +293,14 @@ We then define the list collector
 
 ```java
     ...
-    public static Collector<List<Object>> list(Type element) {
-      Objects.requireNonNull(element);
-      return new Collector<>(__ -> element, ArrayList::new, (list, key, value) -> list.add(value), List::copyOf);
+    public static ObjectBuilder<List<Object>> list(Type elementType) {
+      Objects.requireNonNull(elementType);
+      return new ObjectBuilder<>(
+          key -> elementType,
+          ArrayList::new,
+          (list, key, value) -> list.add(value),
+          List::copyOf
+      );
     }
   }
 ```
@@ -243,7 +310,7 @@ We add the support of `TypeMatcher`s, the method `addTypeMatcher(typeMatcher)` a
 ```java
   @FunctionalInterface
   public interface TypeMatcher {
-    Optional<Collector<?>> match(Type type);
+    Optional<ObjectBuilder<?>> match(Type type);
   }
 
   private final ArrayList<TypeMatcher> typeMatchers = new ArrayList<>();
@@ -253,86 +320,76 @@ We add the support of `TypeMatcher`s, the method `addTypeMatcher(typeMatcher)` a
     typeMatchers.add(typeMatcher);
   }
 
-  private Collector<?> findCollector(Type type) {
-    for(var typeMatcher: typeMatchers.reversed()) {
-      var collectorOpt = typeMatcher.match(type);
-      if (collectorOpt.isPresent()) {
-        return collectorOpt.orElseThrow();
-      }
-    }
-    return Collector.bean(Utils.erase(type));
-  }
-```
-
-Or using a stream
-```java
-  private Collector<?> findCollector(Type type) {
+  ObjectBuilder<?> findObjectBuilder(Type type) {
     return typeMatchers.reversed().stream()
         .flatMap(typeMatcher -> typeMatcher.match(type).stream())
         .findFirst()
-        .orElseGet(() -> Collector.bean(Utils.erase(type)));
+        .orElseGet(() -> ObjectBuilder.bean(Utils.erase(type)));
   }
 ```
 
 And we add another `parseJSON(text, type)` overload with a Type instead of a Class.
-Inside `start(key)`, we call `findCollector(type)`.
+Inside `start(key)`, we call `findObjectBuilder(type)`.
 
 ```java
-  public <T> T parseJSON(String text, Class<T> beanClass) {
-    return beanClass.cast(parseJSON(text, (Type) beanClass));
+  private record Context<T>(ObjectBuilder<T> objectBuilder, T result) {
+    private static <T> Context<T> create(ObjectBuilder<T> objectBuilder) {
+      return new Context<>(objectBuilder, objectBuilder.supplier.get());
+    }
+
+    private void populate(String key, Object value) {
+      objectBuilder.populater.populate(result, key, value);
+    }
+
+    private Object finish() {
+      return objectBuilder.finisher.apply(result);
+    }
   }
 
-  public Object parseJSON(String text, Type type) {
+  public <T> T parseJSON(String text, Class<T> expectedClass) {
+    return expectedClass.cast(parseJSON(text, (Type) expectedClass));
+  }
+
+  public Object parseJSON(String text, Type expectedType) {
     Objects.requireNonNull(text);
-    Objects.requireNonNull(type);
+    Objects.requireNonNull(expectedType);
+    var stack = new ArrayDeque<Context<?>>();
     var visitor = new ToyJSONParser.JSONVisitor() {
-      record Context(Collector<Object> collector, Object data) {}
-
-      private final ArrayDeque<Context> contexts = new ArrayDeque<>();
       private Object result;
-
 
       @Override
       public void value(String key, Object value) {
-        var context = contexts.peek();
-        assert context != null;
-        context.collector.populater.populate(context.data, key, value);
-      }
-
-      private void start(String key) {
-        var context = contexts.peek();
-        var itemType = context == null? type: context.collector.qualifier.apply(key);
-        var collector = findCollector(itemType).raw();
-        var data = collector.supplier.get();
-        contexts.push(new Context(collector, data));
-      }
-
-      private void end(String key) {
-        var context = contexts.pop();
-        var result = context.collector.finisher.apply(context.data);
-        if (contexts.isEmpty()) {
-          this.result = result;
-        } else {
-          var enclosingContext = contexts.peek();
-          enclosingContext.collector.populater.populate(enclosingContext.data, key, result);
-        }
+        var context = stack.peek();
+        context.populate(key, value);
       }
 
       @Override
       public void startObject(String key) {
-        start(key);
+        var context = stack.peek();
+        var type = context == null ? expectedType : context.objectBuilder.typeProvider.apply(key);
+        var objectbuilder = findObjectBuilder(type);
+        stack.push(Context.create(objectbuilder));
       }
+
       @Override
       public void endObject(String key) {
-        end(key);
+        var instance = stack.pop().finish();
+        if (stack.isEmpty()) {
+          result = instance;
+          return;
+        }
+        var context = stack.peek();
+        context.populate(key, instance);
       }
+
       @Override
       public void startArray(String key) {
-        start(key);
+        startObject(key);
       }
+
       @Override
       public void endArray(String key) {
-        start(key);
+        endObject(key);
       }
     };
     ToyJSONParser.parse(text, visitor);
@@ -343,52 +400,51 @@ Inside `start(key)`, we call `findCollector(type)`.
 ### Q6
 
 ```java
-  public interface TypeReference<T> {}
+  public interface TypeReference<T> { }
 
-  private static Type findDeserializerType(Object typeReference) {
+  private static Type findElemntType(TypeReference<?> typeReference) {
     var typeReferenceType = Arrays.stream(typeReference.getClass().getGenericInterfaces())
-        .flatMap(t -> t instanceof ParameterizedType parameterizedType? Stream.of(parameterizedType): Stream.empty())
+        .flatMap(t -> t instanceof ParameterizedType parameterizedType? Stream.of(parameterizedType): null)
         .filter(t -> t.getRawType() == TypeReference.class)
-        .findFirst().orElseThrow(() -> new IllegalArgumentException("invalid TypeReference " + typeReference));
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("invalid TypeReference " + typeReference));
     return typeReferenceType.getActualTypeArguments()[0];
   }
 
-  @SuppressWarnings("unchecked")
   public <T> T parseJSON(String text, TypeReference<T> typeReference) {
-    Objects.requireNonNull(text);
-    Objects.requireNonNull(typeReference);
-    return (T) parseJSON(text, findDeserializerType(typeReference));
+    var elementType = findElemntType(typeReference);
+    @SuppressWarnings("unchecked")
+    var result = (T) parseJSON(text, elementType);
+    return result;
   }
 ```
 
 ### Q7
 
 ```java
-public record Collector<B>(Function<? super String, ? extends Type> qualifier,
-                           Supplier<? extends B> supplier, Populater<B> populater, Function<? super B, ?> finisher) {
-  ...
-
-  private static int findComponentIndex(Map<String, Integer> componentIndexMap, String key, Class<?> recordClass) {
-    var index = componentIndexMap.get(key);
-    if (index == null) {
-      throw new IllegalStateException("unknown component " + key + " for record " + recordClass.getName());
+public record ObjectBuilder<T>(Function<? super String, ? extends Type> typeProvider,
+                          Supplier<? extends T> supplier,
+                          Populater<? super T> populater,
+                          Function<? super T, ?> finisher) {
+    public interface Populater<T> {
+      void populate(T instance, String key, Object value);
     }
-    return index;
-  }
 
-  public static Collector<Object[]> record(Class<?> recordClass) {
-    Objects.requireNonNull(recordClass);
-    var components = recordClass.getRecordComponents();
-    var componentIndexMap = IntStream.range(0, components.length)
-        .boxed()
-        .collect(toMap(i -> components[i].getName(), component -> component));
-    var constructor = Utils.canonicalConstructor(recordClass, components);
-    return new Collector<>(
-        key -> components[findComponentIndex(componentIndexMap, key, recordClass)].getGenericType(),
-        () -> new Object[components.length],
-        (array, key, value) -> array[findComponentIndex(componentIndexMap, key, recordClass)] = value,
-        array -> Utils.newInstance(constructor, array)
-    );
+    ...
+
+    public static ObjectBuilder<Object[]> record(Class<?> recordClass) {
+      Objects.requireNonNull(recordClass);
+      var components = recordClass.getRecordComponents();
+      var map = IntStream.range(0, components.length)
+          .boxed()
+          .collect(Collectors.toMap(i -> components[i].getName(), Function.identity()));
+      var constructor = Utils.canonicalConstructor(recordClass, components);
+      return new ObjectBuilder<>(
+          key -> components[map.get(key)].getGenericType(),
+          () -> new Object[components.length],
+          (array, key, value) -> array[map.get(key)] = value,
+          array -> Utils.newInstance(constructor, array)
+      );
+    }
   }
-}
 ```
