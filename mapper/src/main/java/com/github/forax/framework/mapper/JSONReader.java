@@ -17,8 +17,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toMap;
-
 public class JSONReader {
   private record BeanData(Constructor<?> constructor, Map<String, PropertyDescriptor> propertyMap) {
     PropertyDescriptor findProperty(String key) {
