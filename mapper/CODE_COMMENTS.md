@@ -5,11 +5,10 @@
 ```java
   public String toJSON(Object o) {
     return switch (o) {
-        case null -> "null";
-        case Boolean value -> "" + value;
-        case Number value -> "" + value;
-        case String value -> "\"" + value + "\"";
-        default -> throw new IllegalArgumentException("not supported yet");
+      case null -> "null";
+      case Boolean _, Integer _, Long _, Float _, Double _ -> o.toString();
+      case String value -> "\"" + value + "\"";
+      default -> throw new IllegalArgumentException("not supported yet");
     };
   }
 ```
@@ -19,10 +18,9 @@
 ```java
   public String toJSON(Object o) {
     return switch (o) {
-        case null -> "null";
-        case Boolean value -> "" + value;
-        case Number value -> "" + value;
-        case String value -> "\"" + value + "\"";
+      case null -> "null";
+      case Boolean _, Integer _, Long _, Float _, Double _ -> o.toString();
+      case String value -> "\"" + value + "\"";
         default -> {
           var beanInfo = Utils.beanInfo(o.getClass());
           return Arrays.stream(beanInfo.getPropertyDescriptors())
@@ -60,8 +58,7 @@
   public String toJSON(Object o) {
     return switch (o) {
       case null -> "null";
-      case Boolean value -> "" + value;
-      case Number value -> "" + value;
+      case Boolean _, Integer _, Long _, Float _, Double _ -> o.toString();
       case String value -> "\"" + value + "\"";
       default -> {
         var properties = PROPERTIES_CLASS_VALUE.get(o.getClass());
@@ -104,9 +101,8 @@
   public String toJSON(Object o) {
     return switch (o) {
         case null -> "null";
-        case Boolean value -> "" + value;
-        case Number value -> "" + value;
-        case String value -> "\"" + value + "\"";
+      case Boolean _, Integer _, Long _, Float _, Double _ -> o.toString();
+      case String value -> "\"" + value + "\"";
         default -> {
           var generator = GENERATOR_CLASS_VALUE.get(o.getClass());
           return generator.generate(this, o);
@@ -136,8 +132,7 @@
   public String toJSON(Object o) {
     return switch (o) {
         case null -> "null";
-        case Boolean value -> "" + value;
-        case Number value -> "" + value;
+        case Boolean _, Integer _, Long _, Float _, Double _ -> o.toString();
         case String value -> "\"" + value + "\"";
         default -> {
           var type = o.getClass();
