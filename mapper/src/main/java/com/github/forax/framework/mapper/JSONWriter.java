@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.joining;
 
@@ -59,7 +58,7 @@ public final class JSONWriter {
   public <T> void configure(Class<? extends T> type, Function<? super T, String> function) {
     Objects.requireNonNull(type);
     Objects.requireNonNull(function);
-    var result = map.putIfAbsent(type, (__, object) -> function.apply(type.cast(object)));
+    var result = map.putIfAbsent(type, (_, object) -> function.apply(type.cast(object)));
     if (result != null) {
       throw new IllegalStateException("already a function registered for type " + type.getName());
     }
@@ -68,7 +67,7 @@ public final class JSONWriter {
   public String toJSON(Object o) {
     return switch (o) {
       case null -> "null";
-      case Boolean _, Number _ -> o.toString();
+      case Boolean _, Integer _, Long _, Float _, Double _ -> o.toString();
       case String value -> "\"" + value + "\"";
       default -> {
         var type = o.getClass();
