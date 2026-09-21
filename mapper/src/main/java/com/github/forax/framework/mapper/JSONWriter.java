@@ -53,7 +53,12 @@ public final class JSONWriter {
         .toList();
   }
 
-  private final HashMap<Class<?>, Generator> map = new HashMap<>();
+  private final HashMap<Class<?>, Generator> map;
+
+  public JSONWriter() {
+    map = new HashMap<>();
+    super();
+  }
 
   public <T> void configure(Class<? extends T> type, Function<? super T, String> function) {
     Objects.requireNonNull(type);

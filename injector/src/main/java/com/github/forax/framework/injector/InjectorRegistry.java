@@ -12,9 +12,12 @@ import java.util.function.Supplier;
 import static java.util.Objects.requireNonNull;
 
 public final class InjectorRegistry {
-  public InjectorRegistry() { }
+  private final HashMap<Class<?>, Supplier<?>> map;
 
-  private final HashMap<Class<?>, Supplier<?>> map = new HashMap<>();
+  public InjectorRegistry() {
+    map = new HashMap<>();
+    super();
+  }
 
   public <T> void registerInstance(Class<T> type, T instance) {
     Objects.requireNonNull(type);

@@ -12,7 +12,12 @@ import java.util.stream.Stream;
 
 public final class InterceptorRegistry {
   /*
-  private final HashMap<Class<?>, List<AroundAdvice>> adviceMap = new HashMap<>();
+  private final HashMap<Class<?>, List<AroundAdvice>> adviceMap;
+
+  public InterceptorRegistry() {
+    adviceMap = new HashMap<>();
+    super();
+  }
 
   public void addAroundAdvice(Class<? extends Annotation> annotationClass, AroundAdvice advice) {
     Objects.requireNonNull(annotationClass, "annotationClass is null");
@@ -46,8 +51,14 @@ public final class InterceptorRegistry {
   }*/
 
 
-  private final HashMap<Class<?>, List<Interceptor>> interceptorMap = new HashMap<>();
-  private final HashMap<Method, Invocation> invocationCache = new HashMap<>();
+  private final HashMap<Class<?>, List<Interceptor>> interceptorMap;
+  private final HashMap<Method, Invocation> invocationCache;
+
+  public InterceptorRegistry() {
+    interceptorMap = new HashMap<>();
+    invocationCache = new HashMap<>();
+    super();
+  }
 
   public void addAroundAdvice(Class<? extends Annotation> annotationClass, AroundAdvice advice) {
     Objects.requireNonNull(annotationClass, "annotationClass is null");

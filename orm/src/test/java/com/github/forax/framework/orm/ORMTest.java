@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SuppressWarnings("static-method")
-public class ORMTest {
+public final class ORMTest {
   @Nested
   public class Q1 {
 

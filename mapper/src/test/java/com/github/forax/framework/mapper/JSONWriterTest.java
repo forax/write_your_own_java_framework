@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SuppressWarnings({"unused", "static-method"})
-public class JSONWriterTest {
+public final class JSONWriterTest {
 
   @Nested
   public class Q1 {

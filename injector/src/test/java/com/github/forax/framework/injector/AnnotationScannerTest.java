@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SuppressWarnings("unused")
-public class AnnotationScannerTest {
+public final class AnnotationScannerTest {
 
   @Nested
   public class Q1 {

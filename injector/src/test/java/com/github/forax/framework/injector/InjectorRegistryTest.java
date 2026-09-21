@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @SuppressWarnings("unused")
-public class InjectorRegistryTest {
+public final class InjectorRegistryTest {
   @Nested
   public class Q1 {
     @Test @Tag("Q1")

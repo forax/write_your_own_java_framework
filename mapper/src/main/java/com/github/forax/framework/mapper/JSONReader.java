@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-public class JSONReader {
+public final class JSONReader {
   private record BeanData(Constructor<?> constructor, Map<String, PropertyDescriptor> propertyMap) {
     PropertyDescriptor findProperty(String key) {
       var property = propertyMap.get(key);
@@ -100,7 +100,12 @@ public class JSONReader {
     Optional<ObjectBuilder<?>> match(Type type);
   }
 
-  private final ArrayList<TypeMatcher> typeMatchers = new ArrayList<>();
+  private final ArrayList<TypeMatcher> typeMatchers;
+
+  public JSONReader() {
+    typeMatchers = new ArrayList<>();
+    super();
+  }
 
   public void addTypeMatcher(TypeMatcher typeMatcher) {
     Objects.requireNonNull(typeMatcher);

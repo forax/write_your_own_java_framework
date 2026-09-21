@@ -23,7 +23,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-public class AnnotationScanner {
+public final class AnnotationScanner {
   // package for testing
   static Stream<String> findAllJavaFilesInFolder(Path folder) throws IOException{
     return Files.list(folder)
@@ -52,7 +52,12 @@ public class AnnotationScanner {
         .toList();
   }
 
-  private final HashMap<Class<?>, Consumer<? super Class<?>>> actionMap = new HashMap<>();
+  private final HashMap<Class<?>, Consumer<? super Class<?>>> actionMap;
+
+  public AnnotationScanner() {
+    actionMap = new HashMap<>();
+    super();
+  }
 
   public void addAction(Class<? extends Annotation> annotationClass, Consumer<? super Class<?>> action) {
     Objects.requireNonNull(annotationClass);
