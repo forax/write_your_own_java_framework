@@ -69,7 +69,7 @@ public final class JSONWriter {
       case null -> "null";
       case Boolean _, Integer _, Long _, Float _, Double _ -> o.toString();
       case String value -> "\"" + value + "\"";
-      default -> {
+      case Object _ -> {
         var type = o.getClass();
         var generator = map.get(type);
         if (generator == null) {
